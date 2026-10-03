@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>VerySecureWebsite - Security Lab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #e94560;
+            --success: #4facfe;
+            --muted: #7f8c8d;
+            --bg: #f8f9fa;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active { display: flex; }
+        
+        .modal {
+            background: white;
+            margin: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 420px;
+            animation: modalIn 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .modal-header .close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--muted);
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .modal-header .close:hover { color: var(--accent); }
+        
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+        
+        .modal-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-body p {
+            color: #555;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover { background: #cbd5e0; }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn-primary:hover { background: #ff5b70; }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover { background: #38bdf8; }
+        
+        /* Dashboard */
+        .dashboard {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .dashboard h1 {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .labs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .lab-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .lab-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+        
+        .lab-card.not-started { border-left: 4px solid #aaa; }
+        .lab-card.in-progress { border-left: 4px solid #f6ad55; }
+        .lab-card.completed { border-left: 4px solid var(--success); }
+        
+        .lab-card h3 { margin-bottom: 0.75rem; color: var(--primary); }
+        
+        .lab-card .category {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+        
+        .lab-card .objective {
+            font-size: 0.85rem;
+            color: #555;
+            line-height: 1.4;
+            margin-bottom: 1rem;
+        }
+        
+        .lab-card .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-not-started {
+            background: #e2e8f0;
+            color: #7f8c8d;
+        }
+        
+        .status-in-progress {
+            background: #fed7aa;
+            color: #9a5c15;
+        }
+        
+        .status-completed {
+            background: #d1fae5;
+            color: #059669;
+        }
+        
+        /* Buttons for status */
+        .status-btn {
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: 1px solid currentColor;
+        }
+        
+        .btn-not-started { background: #fff; color: #7f8c8d; border-color: #7f8c8d; }
+        .btn-in-progress { background: #fff; color: #f6ad55; border-color: #f6ad55; }
+        .btn-completed { background: #fff; color: var(--success); border-color: var(--success); cursor: default; }
+        
+        @media (max-width: 480px) {
+            .lab-card { padding: 1rem; }
+            .modal { margin: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Lab Completion Modal -->
+    <div class="modal-overlay" id="completionModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal" role="document">
+            <div class="modal-header" id="modalHeader">
+                <div class="modal-icon" id="modalIcon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 7l10 5 10-5"/></svg>
+                </div>
+                <h2 id="modalTitle">Lab completed!</h2>
+                <button class="close" aria-label="Dismiss modal" onclick="hideCompletionModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <p id="modalMessage">You have successfully completed this lab.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideCompletionModal()">Dismiss</button>
+                <button class="btn btn-primary" id="proceedBtn" style="display:none;">Proceed to next</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard">
+        <h1>VerySecureWebsite Security Labs</h1>
+        
+        <div class="labs-grid">
+            <!-- BOLA/IDOR Lab -->
+            <article class="lab-card bola" data-lab="bola">
+                <div class="category">Authorization</div>
+                <h3>BOLA/IDOR - Object Level Authorization</h3>
+                <p class="objective">Demonstrate unauthorized access to another synthetic user's records. Access Bob's records as Alice.</p>
+                <div class="status-badge status-not-started btn btn-not-started" id="bolaStatus">Not started</div>
+            </article>
+            
+            <!-- BFLA Lab -->
+            <article class="lab-card bfla" data-lab="bfla">
+                <div class="category">Authorization</div>
+                <h3>BFLA - Function Level Authorization</h3>
+                <p class="objective">Demonstrate that a regular test user can access a protected administrative function in the vulnerable lab.</p>
+                <div class="status-badge status-not-started btn btn-not-started" id="bflaStatus">Not started</div>
+            </article>
+            
+            <!-- XSS Lab -->
+            <article class="lab-card xss" data-lab="xss">
+                <div class="category">Injection</div>
+                <h3>Reflected XSS - Cross Site Scripting</h3>
+                <p class="objective">Demonstrate that a controlled test payload executes in the lab's browser context.</p>
+                <div class="status-badge status-not-started btn btn-not-started" id="xssStatus">Not started</div>
+            </article>
+        </div>
+    </div>
+
+    <script>
+        // Lab completion state tracking
+        const completedLabs = new Set();
+        let pendingCompletion = null;
+        
+        // Show completion modal
+        function showCompletionModal(labName, message, timestamp) {
+            const modal = document.getElementById('completionModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalMessage = document.getElementById('modalMessage');
+            
+            modal.setAttribute('aria-hidden', 'false');
+            modal.classList.add('active');
+            
+            modalTitle.textContent = 'Lab completed!';
+            modalMessage.textContent = message;
+            
+            // Update timestamp
+            const now = new Date(timestamp).toLocaleString();
+            modalBody.innerHTML += `<p><small>Completed: ${now}</small></p>`;
+            
+            // Focus management
+            const closeBtn = modal.querySelector('.close');
+            closeBtn.focus();
+            pendingCompletion = {
+                labName,
+                timestamp
+            };
+        }
+        
+        // Hide completion modal
+        function hideCompletionModal() {
+            const modal = document.getElementById('completionModal');
+            modal.setAttribute('aria-hidden', 'true');
+            modal.classList.remove('active');
+            pendingCompletion = null;
+        }
+        
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideCompletionModal();
+            }
+        });
+        
+        // Lab status tracking
+        document.querySelectorAll('.lab-card').forEach(card => {
+            const labId = card.dataset.lab;
+            const statusBadge = card.querySelector('.status-badge');
+            const statusBtn = statusBadge ? statusBadge.classList[1] : null;
+            
+            // Initialize status
+            updateLabStatus(labId, statusBadge);
+            
+            // Click handler for lab card
+            card.addEventListener('click', (e) => {
+                // Don't trigger if clicking badge or buttons
+                if (e.target.classList.contains('status-badge')) return;
+                if (e.target.classList.contains('btn')) return;
+                
+                // Mark as in progress
+                updateLabStatus(labId, 'in-progress');
+                markLabInProgress(labId);
+            });
+        });
+        
+        function updateLabStatus(labId, status) {
+            const card = document.querySelector(`.lab-card[data-lab="${labId}"]`);
+            if (!card) return;
+            
+            card.classList.remove('not-started', 'in-progress', 'completed');
+            
+            const statusLabels = {
+                'not-started': ['status-not-started', 'Not started'],
+                'in-progress': ['status-in-progress', 'In progress'],
+                'completed': ['status-completed', 'Completed']
+            };
+            
+            const [className, text] = statusLabels[status] || statusLabels['not-started'];
+            
+            card.classList.add(className);
+            if (statusBadge) {
+                statusBadge.textContent = text;
+                statusBadge.className = `status-badge ${className}`;
+            }
+        }
+        
+        function markLabInProgress(labId) {
+            // Send to server to mark as in progress
+            fetch(`/labs/${labId}/status`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({labId, status: 'in_progress'})
+            }).then(() => {});
+        }
+        
+        // Initialize: check current lab statuses from server
+        document.querySelectorAll('.lab-card').forEach(card => {
+            const labId = card.dataset.lab;
+            fetch(`/labs/${labId}/status`)
+                .then(res => res.json())
+                .then(data => {
+                    updateLabStatus(labId, data.status || 'not-started');
+                });
+        });
+        
+        // Completion verification via server
+        async function verifyAndMarkComplete(labId, evidence) {
+            const response = await fetch(`/labs/${labId}/complete`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ labId, evidence })
+            });
+            
+            const data = await response.json();
+            
+            if (data.verified) {
+                showCompletionModal(
+                    labId,
+                    getCompletionMessage(labId, data),
+                    data.verified_at
+                );
+                completedLabs.add(labId);
+                updateLabStatus(labId, 'completed');
+                
+                // Enable proceed button after timeout
+                setTimeout(() => {
+                    const proceedBtn = document.getElementById('proceedBtn');
+                    if (proceedBtn) proceedBtn.style.display = 'inline-block';
+                }, 2000);
+            } else {
+                // Show brief indication that conditions not met
+                alert('Completion conditions not met. Please review the lab requirements.');
+            }
+            
+            return data.verified;
+        }
+        
+        function getCompletionMessage(labId, data) {
+            const messages = {
+                'bola': 'You have successfully accessed another user\'s records, demonstrating the BOLA/IDOR vulnerability.',
+                'bfla': 'You have successfully accessed the admin function as a regular user, demonstrating the BFLA vulnerability.',
+                'xss': 'You have successfully demonstrated a reflected XSS payload in the browser context.'
+            };
+            return messages[labId] || 'You have completed this lab.';
+        }
+        
+        // Simulated completion triggers (replace with actual server verification)
+        // BOLA: Access another user's record via API
+        window.demoBOLAComplete = function() {
+            verifyAndMarkComplete('bola', { action: 'cross_user_access', record_id: 2 });
+        };
+        
+        // BFLA: Access admin endpoint as regular user
+        window.demoBFLAComplete = function() {
+            verifyAndMarkComplete('bfla', { action: 'admin_access_as_user' });
+        };
+        
+        // XSS: Submit test payload
+        window.demoXSSComplete = function() {
+            const payload = '<script>alert(1)</script>';
+            verifyAndMarkComplete('xss', { action: 'xss_payload', payload });
+        };
+    </script>
+</body>
+</html>

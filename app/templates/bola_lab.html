@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>VerySecureWebsite - Security Lab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #e94560;
+            --success: #4facfe;
+            --muted: #7f8c8d;
+            --bg: #f8f9fa;
+        }
+        
+        * { box-sizing: border-border: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: #333;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .max-width {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 { margin-bottom: 1rem; color: var(--primary); }
+        .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 1.1rem; }
+        
+        /* Form styles for lab interaction */
+        .lab-form { background: white; padding: 2rem; border-radius: 8px; 
+                    margin-bottom: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 0.75rem; border: 1px solid #ddd; 
+            border-radius: 4px; font-family: inherit; font-size: 1rem;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(233,69,96,0.1);
+        }
+        
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; 
+               font-size: 1rem; font-weight: 500; cursor: pointer; 
+               transition: background 0.2s; margin-top: 0.5rem; }
+        .btn-secondary { background: #e2e8f0; color: #333; }
+        .btn-secondary:hover { background: #cbd5e0; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #ff5b70; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #38bdf8; }
+        
+        .notice { background: #fff3cd; border: 1px solid #ffeeba; 
+                  padding: 1rem; border-radius: 4px; margin: 1.5rem 0; color: #856404; }
+        .safety { background: #d1e7dd; border: 1px solid #badbcc; 
+                  padding: 1rem; border-radius: 4px; margin: 1.5rem 0; color: #0f5132; }
+    </style>
+</head>
+<body>
+    <div class="max-width">
+        <h1>BOLA/IDOR Lab</h1>
+        <p class="subtitle">Object Level Authorization Bypass</p>
+        
+        <div class="notice">
+            <strong>Safety Notice:</strong> This lab is for educational purposes only. 
+            All accounts and data are synthetic. No real systems are affected.
+        </div>
+        
+        <div class="lab-form">
+            <form id="bolaForm">
+                <div class="form-group">
+                    <label>Your Username</label>
+                    <input type="text" id="userUsername" placeholder="alice or bob">
+                </div>
+                <div class="form-group">
+                    <label>Target Record ID</label>
+                    <input type="number" id="targetRecordId" min="1" max="4" placeholder="1-4">
+                </div>
+                <button type="submit" class="btn btn-primary">Access Record</button>
+            </form>
+        </div>
+        
+        <div class="safety">
+            <strong>Learning Objective:</strong> Understand how inadequate object-level 
+            authorization allows users to access resources belonging to other users.
+        </div>
+        
+        <h3>Interaction Instructions</h3>
+        <ol>
+            <li>Login as Alice (username: alice, password: labtest123)</li>
+            <li>Attempt to access Bob's records (record IDs 3 or 4) via the API</li>
+            <li>Observe that the vulnerable endpoint returns Bob's record data without ownership validation</li>
+            <li>Compare with the secured implementation that enforces ownership checks</li>
+        </ol>
+        
+        <hr>
+        
+        <h2>Test API Endpoints</h2>
+        
+        <div class="lab-form">
+            <form id="apiForm">
+                <div class="form-group">
+                    <label>Endpoint</label>
+                    <select id="endpointSelect">
+                        <option value="/records/1">GET /records/1 (Alice's record)</option>
+                        <option value="/records/2">GET /records/2 (Alice's record)</option>
+                        <option value="/records/3">GET /records/3 (Bob's record)</option>
+                        <option value="/records/4">GET /records/4 (Bob's record)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Login as</label>
+                    <select id="userSelect">
+                        <option value="alice">Alice (user)</option>
+                        <option value="bob">Bob (user)</option>
+                        <option value="admin">Admin (admin)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Execute Request</button>
+            </form>
+        </div>
+        
+        <div id="responseOutput" style="margin-top: 2rem; padding: 1rem; background: #f1f3f4; border-radius: 4; display: none;"></div>
+    </div>
+
+    <script>
+        // Simulated users for the lab
+        const labUsers = {
+            alice: { password: 'labtest123', role: 'user', id: 1 },
+            bob: { password: 'labtest123', role: 'user', id: 2 },
+            admin: { password: 'admin123', role: 'admin', id: 3 }
+        };
+        
+        let currentUser = null;
+        let csrfToken = '';
+        
+        // Simulate login
+        function login(username) {
+            const user = labUsers[username];
+            if (!user) { alert('Unknown user'); return false; }
+            
+            // Simulate successful login - in real app this would set cookie
+            currentUser = { ...user, username };
+            csrfToken = 'demo-token-' + Date.now();
+            
+            document.getElementById('userUsername').value = username;
+            alert(`Logged in as ${username}`);
+            return true;
+        }
+        
+        // Form submit: Access record
+        document.getElementById('bolaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('userUsername').value || 'alice';
+            const recordId = document.getElementById('targetRecordId').value || 1;
+            
+            if (!login(username)) return;
+            
+            // In a real vulnerable lab, this API would fail to check ownership
+            // Here we simulate the behavior
+            const isAlice = username === 'alice';
+            const isBobRecord = recordId >= 3;
+            
+            const responseDiv = document.getElementById('responseOutput');
+            responseDiv.style.display = 'block';
+            
+            if (isAlice && isBobRecord) {
+                // Vulnerable: Alice can access Bob's record (BOLA)
+                responseDiv.innerHTML = `<strong>VULNERABLE:</strong> Alice accessed record ${recordId} (Bob's record). ` +
+                    `No ownership validation was performed. Data exposed: ` +
+                    `<code>${isBobRecord === 3 ? 'Patient notes' : 'Investment portfolio'}</code>`;
+                responseDiv.style.background = '#fed7aa';
+                responseDiv.style.borderLeft = '4px solid #f6ad55';
+                
+                // Mark BOLA as completed for demo
+                document.querySelector('.lab-card.bola .status-badge')
+                    .textContent = 'Completed (demo)';
+                document.querySelector('.lab-card.bola .status-badge')
+                    .className = 'status-badge status-completed btn btn-completed';
+            } else {
+                // Secure: Access denied or own record
+                responseDiv.innerHTML = `<strong>SECURE:</strong> Access denied or own record retrieved. ` +
+                    `Ownership validation prevented unauthorized access.`;
+                responseDiv.style.background = '#d1fae5';
+                responseDiv.style.borderLeft = '4px solid #059669';
+            }
+        });
+        
+        // Form submit: API test
+        document.getElementById('apiForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const endpoint = document.getElementById('endpointSelect').value;
+            const user = document.getElementById('userSelect').value;
+            
+            // Simple simulation - show what would happen
+            const responseDiv = document.getElementById('responseOutput');
+            responseDiv.style.display = 'block';
+            
+            if (user === 'alice' && endpoint.includes('3') || endpoint.includes('4')) {
+                responseDiv.innerHTML = `<strong>VULNERABLE:</strong> Alice accessing Bob's record ${endpoint}. ` +
+                    `BOLA vulnerability: no ownership check. ` +
+                    `Record data would be exposed in a vulnerable implementation.`;
+            } else if (user === 'admin' || endpoint.includes('1') || endpoint.includes('2')) {
+                responseDiv.innerHTML = `<strong>SECURE/OK:</strong> Appropriate access. ` +
+                    `${user} can access record ${endpoint.replace('/records/', '')}.`;
+            } else {
+                responseDiv.innerHTML = `<strong>ACCESS DENIED:</strong> Unauthorized access attempt blocked.`;
+            }
+        });
+    </script>
+</body>
+</html>

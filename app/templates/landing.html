@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>VerySecureWebsite - Security Lab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #e94560;
+            --success: #4facfe;
+            --muted: #7f8c8d;
+            --bg: #f8f9fa;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .landing-card {
+            background: white;
+            border-radius: 8px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            max-width: 400px; width: 90%;
+        }
+        
+        .landing-card h1 {
+            margin-bottom: 1rem; color: var(--primary);
+            font-size: 2rem;
+        }
+        
+        .landing-card p {
+            color: var(--muted);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .btn-landing {
+            display: inline-block; padding: 0.875rem 1.75rem;
+            background: var(--accent); color: white; text-decoration: none;
+            border-radius: 4px; font-weight: 500; font-size: 1rem;
+            transition: background 0.2s;
+        }
+        
+        .btn-landing:hover { background: #ff5b70; }
+        
+        /* Remove features section for simplified landing page */
+        .features {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-card">
+        <h1>VerySecureWebsite</h1>
+        <p>AI-assisted application security research and vulnerability lab.</p>
+        <p>An intentionally vulnerable web application for learning application security testing.</p>
+        <a href="/labs" class="btn-landing">Enter Security Labs</a>
+    </div>
+</body>
+</html>

