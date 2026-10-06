@@ -1,5 +1,7 @@
 # VerySecureWebsite - Methodology Documentation
 
+> **Historical methodology baseline:** The examples and counts below record an earlier validation phase. For current learner workflows and results, see [LAB_SOLVING_AUDIT.md](LAB_SOLVING_AUDIT.md) and [LAB_DISCOVERABILITY_AUDIT.md](LAB_DISCOVERABILITY_AUDIT.md).
+
 ## Testing Approach
 
 This document describes the methodology used to validate security findings in the VerySecureWebsite application.
@@ -44,7 +46,7 @@ Findings confirmed by the automated test suite (`test_bola_bfla.py`).
 - VUL-001: 4/4 BOLA tests pass
 - VUL-002: 2/2 BFLA tests pass
 
-### Not Yet Validated
+### Not Yet Validated (at the time of this report)
 
 Findings that have not been fully tested due to environment limitations or incomplete implementation.
 
@@ -73,8 +75,8 @@ All tests use synthetic data only:
 
 | User | Role | Password |
 |------|------|----------|
-| alice | user | labtest123 |
-| bob | user | labtest123 |
+| alice | user | alice123 |
+| bob | user | bob123 |
 | admin | admin | admin123 |
 
 | Record ID | Title | Owner |

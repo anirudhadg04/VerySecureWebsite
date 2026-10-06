@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+
+{% block title %}VerySecureWebsite - {{ mode|title }}{% endblock %}
+
+
+{% block content %}
+<main class="panel-retro">
+    {% if mode == 'login' %}
+    <div class="auth-content">
+        <h1>OPERATOR LOGIN</h1>
+        <p>ENTER YOUR GMAIL AND PASSWORD TO ACCESS THE NETWORK.</p>
+        
+        <form id="authForm" novalidate class="panel-retro">
+            <div class="form-group">
+                <label for="email">GMAIL ADDRESS</label>
+                <input id="email" name="email" type="email" autocomplete="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">PASSWORD</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    REMEMBER ME
+                </label>
+            </div>
+            <button id="submitButton" type="submit" class="btn-retro">INITIATE SESSION</button>
+            <div id="authStatus" role="status" aria-live="polite"></div>
+        </form>
+        
+        <div class="auth-links">
+            <a href="/register" class="btn-retro-secondary">CREATE OPERATOR PROFILE</a>
+            <a href="/forgot-password" class="btn-retro-secondary">CLEARANCE RECOVERY?</a>
+        </div>
+    </div>
+    
+    {% elif mode == 'register' %}
+    <div class="auth-content">
+        <h1>CREATE OPERATOR PROFILE</h1>
+        <p>CREATE YOUR ACCOUNT TO ACCESS CYBERSECURITY TRAINING MISSIONS.</p>
+        
+        <!-- Step 1: Email Input -->
+        <div id="register-step-1" class="register-step">
+            <div class="form-group">
+                <label for="regEmail">GMAIL ADDRESS</label>
+                <input id="regEmail" name="regEmail" type="email" autocomplete="email" placeholder="yourname@gmail.com" required>
+            </div>
+            <button id="sendOtpBtn" type="button" class="btn-retro">SEND OTP</button>
+            <div id="regStatus1" role="status" aria-live="polite"></div>
+        </div>
+        
+        <!-- Step 2: OTP Verification -->
+        <div id="register-step-2" class="register-step" style="display: none;">
+            <div class="form-group">
+                <label>OTP SENT TO:</label>
+                <div id="otpEmailDisplay" class="otp-email-display"></div>
+            </div>
+            <div class="form-group">
+                <label for="otpCode">ENTER OTP</label>
+                <input id="otpCode" name="otpCode" type="text" inputmode="numeric" autocomplete="otp" maxlength="6" required>
+            </div>
+            <div class="otp-actions">
+                <button id="verifyOtpBtn" type="button" class="btn-retro">VERIFY OTP</button>
+                <button id="resendOtpBtn" type="button" class="btn-retro-secondary">RESEND OTP</button>
+            </div>
+            <div id="regStatus2" role="status" aria-live="polite"></div>
+            <div id="otpTimer" class="otp-timer" style="display: none;"></div>
+        </div>
+        
+        <!-- Step 3: Password Setup -->
+        <div id="register-step-3" class="register-step" style="display: none;">
+            <div class="form-group">
+                <label for="newPassword">CREATE PASSWORD</label>
+                <input id="newPassword" name="newPassword" type="password" autocomplete="new-password" required>
+                <small id="passwordHelp" class="form-text">MINIMUM 12 CHARACTERS, WITH LOWERCASE, UPPERCASE, AND A NUMBER.</small>
+            </div>
+            <button id="submitPasswordBtn" type="button" class="btn-retro">CREATE PROFILE</button>
+            <div id="regStatus3" role="status" aria-live="polite"></div>
+        </div>
+        
+        <div class="auth-links">
+            <a href="/login" class="btn-retro-secondary">ALREADY REGISTERED? INITIATE SESSION</a>
+        </div>
+    </div>
+    
+    {% elif mode == 'forgot' %}
+    <div class="auth-content">
+        <h1>CLEARANCE RECOVERY</h1>
+        <p>ENTER YOUR GMAIL ADDRESS. IF THE ID IS REGISTERED AND RECOVERY IS AVAILABLE, CLEARANCE INSTRUCTIONS WILL BE PROVIDED.</p>
+        
+        <form id="authForm" novalidate class="panel-retro">
+            <div class="form-group">
+                <label for="email">GMAIL ADDRESS</label>
+                <input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
+            </div>
+            <button id="submitButton" type="submit" class="btn-retro">SEND RECOVERY LINK</button>
+            <div id="authStatus" role="status" aria-live="polite"></div>
+        </form>
+        
+        <div class="auth-links">
+            <a href="/login" class="btn-retro-secondary">BACK TO SESSION INITIATION</a><a href="/register">CREATE OPERATOR PROFILE</a>
+        </div>
+    </div>
+    
+    {% else %} <!-- reset password -->
+    <div class="auth-content">
+        <h1>SET NEW CLEARANCE CODE</h1>
+        <p>SELECT A NEW CLEARANCE CODE TO COMPLETE YOUR PROFILE RECOVERY.</p>
+        
+        <form id="authForm" novalidate class="panel-retro">
+            <input type="hidden" id="resetToken" name="token">
+            <div class="form-group">
+                <label for="password">NEW CLEARANCE CODE</label>
+                <input id="password" name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="72" aria-describedby="passwordHelp">
+                <small id="passwordHelp">MINIMUM 12 CHARACTERS, WITH LOWERCASE, UPPERCASE, AND A NUMBER.</small>
+            </div>
+            <div class="form-group>
+                <label for="confirmPassword">CONFIRM NEW CLEARANCE CODE</label>
+                <input id="confirmPassword" name="confirm_password" type="password" autocomplete="new-password" required minlength="12" maxlength="72">
+            </div>
+            <button id="submitButton" type="submit" class="btn-retro">APPLY CLEARANCE</button>
+            <div id="authStatus" role="status" aria-live="polite"></div>
+        </form>
+        
+        <div class="auth-links">
+            <a href="/login" class="btn-retro-secondary">BACK TO SESSION INITIATION</a><a href="/register">CREATE OPERATOR PROFILE</a>
+        </div>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}
+
+
+{% block extra_js %}
+{{ super() }}
+<!-- The existing JavaScript remains, but we'll add some retro styling enhancements -->
+<script>
+const authMode = {{ mode|tojson }};
+const authNext = {{ next|tojson }};
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('authForm');
+    const submitButton = document.getElementById('submitButton');
+    const status = document.getElementById('authStatus');
+
+    if (authMode === 'login' && new URLSearchParams(location.search).has('registered')) {
+        status.textContent = 'PROFILE CREATED. SIGN IN WITH YOUR NEW CREDENTIALS.';
+    }
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        status.textContent = '';
+        const password = document.getElementById('password')?.value;
+        const confirmPassword = document.getElementById('confirmPassword')?.value;
+        if (password !== undefined && confirmPassword !== undefined && password !== confirmPassword) {
+            status.textContent = 'CLEARANCE CODES DO NOT MATCH.';
+            return;
+        }
+        const payload = {};
+        if (authMode === 'login') {
+            payload.username = document.getElementById('email').value; // Email goes in username field for compatibility
+            payload.password = password;
+            payload.rememberMe = document.getElementById('rememberMe')?.checked || false;
+        } else if (authMode === 'forgot') {
+            payload.email = document.getElementById('email').value;
+        } else {
+            payload.token = document.getElementById('resetToken').value;
+            payload.password = password;
+            payload.confirm_password = confirmPassword;
+            if (!payload.token) {
+                status.textContent = 'RESET TOKEN MISSING. OPEN THE RECOVERY LINK FROM YOUR EMAIL.';
+                return;
+            }
+        }
+
+        submitButton.disabled = true;
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'PROCESSING…';
+        try {
+            const endpoints = {
+                login: '/auth/login',
+                register: '/auth/register',
+                forgot: '/auth/forgot-password',
+                reset: '/auth/reset-password'
+            };
+            const response = await fetch(endpoints[authMode], {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                const detail = result.detail;
+                status.textContent = Array.isArray(detail)
+                    ? detail.map(error => error.msg).join(' ')
+                    : (detail || 'REQUEST FAILED. PLEASE TRY AGAIN.');
+                return;
+            }
+            status.textContent = result.message || 'REQUEST COMPLETE.';
+            if (authMode === 'login') {
+                window.location.assign(authNext || '/labs');
+            } else if (authMode === 'register') {
+                window.location.assign('/login?registered=1');
+            } else if (authMode === 'reset') {
+                window.location.assign('/login?reset=1');
+            }
+        } catch (error) {
+            status.textContent = 'NETWORK ERROR. CHECK THE CONNECTION AND RETRY.';
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
+        }
+    });
+
+    if (authMode === 'reset') {
+        const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+        document.getElementById('resetToken').value = token;
+    }
+
+    if (authMode === 'login' && new URLSearchParams(location.search).has('reset')) {
+        status.textContent = 'CLEARANCE CODE RESET. SIGN IN WITH YOUR NEW CREDENTIALS.';
+    }
+
+    // Add retro styling to form elements on focus
+    const inputs = form.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('focus', () => {
+            input.parentElement.style.borderColor = 'var(--accent-primary)';
+            input.parentElement.style.boxShadow = '0 0 0 2px rgba(0, 255, 65, 0.2)';
+        });
+
+        input.addEventListener('blur', () => {
+            input.parentElement.style.borderColor = '';
+            input.parentElement.style.boxShadow = '';
+        });
+    });
+
+    // Add button hover effects
+    submitButton.addEventListener('mouseenter', () => {
+        submitButton.style.transform = 'translateY(-2px)';
+        submitButton.style.boxShadow = '0 4px 8px rgba(0, 255, 65, 0.3)';
+    });
+
+    submitButton.addEventListener('mouseleave', () => {
+        submitButton.style.transform = 'translateY(0)';
+        submitButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+    });
+    
+    // Registration workflow JavaScript
+    if (authMode === 'register') {
+        const step1 = document.getElementById('register-step-1');
+        const step2 = document.getElementById('register-step-2');
+        const step3 = document.getElementById('register-step-3');
+        const sendOtpBtn = document.getElementById('sendOtpBtn');
+        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+        const resendOtpBtn = document.getElementById('resendOtpBtn');
+        const submitPasswordBtn = document.getElementById('submitPasswordBtn');
+        const regEmailInput = document.getElementById('regEmail');
+        const otpCodeInput = document.getElementById('otpCode');
+        const otpEmailDisplay = document.getElementById('otpEmailDisplay');
+        const regStatus1 = document.getElementById('regStatus1');
+        const regStatus2 = document.getElementById('regStatus2');
+        const regStatus3 = document.getElementById('regStatus3');
+        const otpTimer = document.getElementById('otpTimer');
+        
+        let timerInterval = null;
+        let timeLeft = 0;
+        let currentEmail = '';
+        
+        // Step 1: Send OTP
+        sendOtpBtn.addEventListener('click', async () => {
+            const email = regEmailInput.value.trim();
+            if (!email) {
+                regStatus1.textContent = 'Please enter your Gmail address.';
+                return;
+            }
+            
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                regStatus1.textContent = 'Please enter a valid email address.';
+                return;
+            }
+            
+            // Check if it's a Gmail address
+            if (!email.endsWith('@gmail.com')) {
+                regStatus1.textContent = 'Only Gmail addresses are supported for registration.';
+                return;
+            }
+            
+            regStatus1.textContent = 'Sending OTP...';
+            sendOtpBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Failed to send OTP');
+                }
+                
+                // Move to step 2
+                currentEmail = email;
+                otpEmailDisplay.textContent = email;
+                step1.style.display = 'none';
+                step2.style.display = 'block';
+                regStatus1.textContent = '';
+                
+                // Start timer
+                timeLeft = 5 * 60; // 5 minutes in seconds
+                updateTimer();
+                timerInterval = setInterval(updateTimer, 1000);
+                
+            } catch (error) {
+                regStatus1.textContent = error.message || 'Failed to send OTP. Please try again.';
+            } finally {
+                sendOtpBtn.disabled = false;
+            }
+        });
+        
+        // Update timer display
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            otpTimer.textContent = `OTP expires in: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                otpTimer.style.display = 'none';
+                resendOtpBtn.disabled = false;
+            } else {
+                otpTimer.style.display = 'block';
+                resendOtpBtn.disabled = true;
+            }
+            
+            timeLeft--;
+        }
+        
+        // Step 2: Verify OTP
+        verifyOtpBtn.addEventListener('click', async () => {
+            const otp = otpCodeInput.value.trim();
+            if (!otp) {
+                regStatus2.textContent = 'Please enter the OTP.';
+                return;
+            }
+            
+            if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+                regStatus2.textContent = 'Please enter a valid 6-digit OTP.';
+                return;
+            }
+            
+            regStatus2.textContent = 'Verifying OTP...';
+            verifyOtpBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/auth/register/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail, otp: otp })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Invalid OTP');
+                }
+                
+                // Move to step 3
+                step2.style.display = 'none';
+                step3.style.display = 'block';
+                regStatus2.textContent = '';
+                clearInterval(timerInterval);
+                otpTimer.style.display = 'none';
+                
+            } catch (error) {
+                regStatus2.textContent = error.message || 'Invalid OTP. Please try again.';
+            } finally {
+                verifyOtpBtn.disabled = false;
+            }
+        });
+        
+        // Resend OTP
+        resendOtpBtn.addEventListener('click', async () => {
+            resendOtpBtn.disabled = true;
+            regStatus2.textContent = 'Resending OTP...';
+            
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Failed to resend OTP');
+                }
+                
+                // Reset timer
+                timeLeft = 5 * 60; // 5 minutes in seconds
+                updateTimer();
+                timerInterval = setInterval(updateTimer, 1000);
+                
+                regStatus2.textContent = 'OTP resent successfully.';
+                
+            } catch (error) {
+                regStatus2.textContent = error.message || 'Failed to resend OTP. Please try again.';
+            } finally {
+                resendOtpBtn.disabled = false;
+            }
+        });
+        
+        // Step 3: Setup Password
+        submitPasswordBtn.addEventListener('click', async () => {
+            const password = document.getElementById('newPassword').value;
+            if (!password) {
+                regStatus3.textContent = 'Please enter a password.';
+                return;
+            }
+            
+            regStatus3.textContent = 'Creating account...';
+            submitPasswordBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/auth/register/setup-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail, password: password })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Failed to create account');
+                }
+                
+                // Show success and redirect to login
+                regStatus3.textContent = 'Account created successfully! Redirecting to login...';
+                
+                // Redirect after a short delay
+                setTimeout(() => {
+                    window.location.href = '/login?registered=1';
+                }, 1500);
+                
+            } catch (error) {
+                regStatus3.textContent = error.message || 'Failed to create account. Please try again.';
+            } finally {
+                submitPasswordBtn.disabled = false;
+            }
+        });
+    }
+</script>
+{% endblock %}

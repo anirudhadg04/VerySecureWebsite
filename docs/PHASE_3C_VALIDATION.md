@@ -1,5 +1,7 @@
 # Phase 3C — Final Validation and Closure
 
+> **Historical phase report:** Counts and test descriptions below reflect the Phase 3C run, not the current suite. Current lab-solving and test results are in [LAB_SOLVING_AUDIT.md](LAB_SOLVING_AUDIT.md).
+
 ## Objective
 
 Complete authentication validation, verify XSS browser results, run full regression suite, and finalize Phase 3C documentation.
@@ -12,6 +14,16 @@ Complete authentication validation, verify XSS browser results, run full regress
 - ✅ **XSS validation**: Browser tests confirm vulnerable endpoint executes payloads, secure endpoint encodes and prevents execution
 - ✅ **BOLA/BFLA regression**: 18/18 tests passing in `test_bola_bfla.py`
 - ✅ **Documentation**: Phase 3C validation report and updated index created
+
+## TemplateResponse Compatibility Fix
+
+The separate `TEMPLATE_RESPONSE_FIX_REPORT.md` has been consolidated here. With the installed Starlette version, `Jinja2Templates.TemplateResponse` takes the request as its first argument. The landing, dashboard, and lab template routes use the compatible form, for example:
+
+```python
+templates.TemplateResponse(request, "landing.html", {"request": request})
+```
+
+The old argument order could produce a runtime error when rendering a page. The route smoke tests and current browser audit verify that the landing page and lab portals render. This was a template API compatibility issue, separate from the intentionally vulnerable endpoints.
 
 ## Task 1 — Inspect remaining authentication test
 

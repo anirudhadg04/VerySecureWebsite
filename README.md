@@ -44,15 +44,16 @@ This is a local security lab application designed for:
 
 ## Security Testing
 
-For comprehensive testing, use:
+Run the maintained isolated verifier tests:
 
-```bash
-# Authentication and authorization tests
-python -m pytest test_validate.py -v
-
-# BOLA/IDOR and BFLA validation
-python -m pytest test_bola_bfla.py -v
-
-# XSS browser validation
-python xss_browser_test.py
+```powershell
+python -m pytest tests -v
 ```
+
+The broader legacy modules are retained for their existing BOLA/BFLA and authentication coverage. `test_bola_bfla.py` drops and recreates the configured tables in its module setup, so run it only in a disposable project/database copy:
+
+```powershell
+python -m pytest test_bola_bfla.py test_validate.py -v
+```
+
+For the current browser-based learner workflows and exact manual steps, see [docs/LAB_SOLVING_AUDIT.md](docs/LAB_SOLVING_AUDIT.md). The optional Selenium script `xss_browser_test.py` uses port 8000 and requires Chrome/ChromeDriver; use an unused port and a disposable database when running it.

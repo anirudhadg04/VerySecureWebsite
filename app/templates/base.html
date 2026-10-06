@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VerySecureWebsite{% endblock %}</title>
+    <link rel="icon" href="data:,">
+
+    <!-- Load Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Orbitron&family=Share+Tech&family=Press+Start+2E&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/retro-theme.css') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Boot Sequence (hidden by default) -->
+    <div id="bootSequence" class="boot-sequence">
+        <div class="boot-content">
+VerySecureWebsite
+MEMORY CHECK ................ OK
+LOADING SECURITY MODULES ... OK
+INITIALIZING NETWORK ........ OK
+ESTABLISHING SECURE LINK .... OK
+
+SYSTEM ONLINE
+
+
+        </div>
+        <div class="boot-prompt">CLICK ANYWHERE TO CONNECT</div>
+
+    </div>
+    <!-- Main Navigation -->
+    <div class="nav-hover-zone">
+        <nav class="main-nav panel-retro" id="mainNav">
+            <div class="nav-container">
+                <a href="/" class="nav-logo">localhost</a>
+                <div class="nav-links">
+                    <a href="/labs" class="nav-link">MISSION CONTROL</a>
+                    <a href="/operator/profile" class="nav-link">OPERATOR HIDEOUT</a>
+                    <a href="/terminal" class="nav-link">SYSTEM TERMINAL</a>
+                    <a href="/settings" class="nav-link">OPERATOR SETTINGS</a>
+                </div>
+                <div class="nav-user" id="navUser">
+                    <!-- User info will be populated by JavaScript -->
+                </div>
+                <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">☰</button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Terminal Modal (hidden by default) -->
+    <div id="terminalModal" class="modal">
+        <div class="modal-content">
+            <div class="terminal-window" id="terminalOutput">
+                <div class="terminal-prompt">
+                    <span>VerySecureWebsite TERMINAL v2.4</span>
+                </div>
+                <div id="terminalLines"></div>
+                <div class="terminal-prompt">
+                    <span>operator@vsw:~$</span>
+                    <input type="text" id="terminalInput" autocomplete="off" placeholder="">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Basic utility functions
+        function csrfToken() {
+            const entry = document.cookie.split('; ').find(value => value.startsWith('vsw_csrf='));
+            return entry ? decodeURIComponent(entry.substring('vsw_csrf='.length)) : '';
+        }
+
+        // Toast notification system
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast show`;
+            toast.textContent = message;
+
+            // Add type-specific styling
+            if (type === 'success') {
+                toast.style.background = 'var(--accent-primary)';
+                toast.style.color = 'var(--bg-primary)';
+            } else if (type === 'error') {
+                toast.style.background = '#ff0040';
+                toast.style.color = 'var(--bg-primary)';
+            } else if (type === 'warning') {
+                toast.style.background = '#ffbf00';
+                toast.style.color = 'var(--bg-primary)';
+            }
+
+            container.appendChild(toast);
+
+            // Auto remove after duration
+            setTimeout(() => {
+                toast.className = 'toast hide';
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, duration);
+        }
+
+        // Navigation handling
+        document.addEventListener('DOMContentLoaded', () => {
+            const pageAuthenticated = {{ (current_user is defined and current_user is not none)|tojson }};
+            // Boot sequence handling
+            const bootSequence = document.getElementById('bootSequence');
+            function dismissBootSequence() {
+                if (!bootSequence) return;
+                bootSequence.classList.add('hidden');
+                sessionStorage.setItem('vsw_boot_completed', 'true');
+                // Focus the landing page input or first interactive element
+                const landingInput = document.getElementById('landingInput');
+                if (landingInput) landingInput.focus();
+                else document.querySelector('.auth-buttons a, a.btn-retro, button, input')?.focus();
+            }
+            // Determine if we should show the boot sequence
+            const showBootSequence = () => {
+                // Only show on root path and if not completed in this session
+                return window.location.pathname === '/' && !sessionStorage.getItem('vsw_boot_completed');
+            };
+            // Set initial state
+            if (bootSequence) {
+                if (showBootSequence()) {
+                    bootSequence.classList.remove('hidden');
+                } else {
+                    bootSequence.classList.add('hidden');
+                }
+                // Handle click and key events to dismiss
+                bootSequence.addEventListener('click', dismissBootSequence);
+                document.addEventListener('keydown', event => {
+                    if (!bootSequence.classList.contains('hidden') && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault();
+                        dismissBootSequence();
+                    }
+                });
+            }
+
+            const navToggle = document.getElementById('navToggle');
+            const mainNav = document.getElementById('mainNav');
+            const navUser = document.getElementById('navUser');
+
+            // Toggle navigation menu on mobile
+            navToggle.addEventListener('click', () => {
+                mainNav.classList.toggle('nav-open');
+            });
+
+            // Update user info in nav
+            async function updateNavUser() {
+                try {
+                    const response = await fetch('/api/operator/profile', {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('No authenticated operator session');
+                    const profileData = await response.json();
+
+                    const avatar = document.createElement('div');
+                    avatar.className = 'nav-avatar';
+                    const initial = document.createElement('div');
+                    initial.className = 'avatar-initial';
+                    initial.textContent = (profileData.handle || profileData.username || '?').slice(0, 1).toUpperCase();
+                    avatar.appendChild(initial);
+                    const info = document.createElement('div');
+                    info.className = 'nav-user-info';
+                    const username = document.createElement('div');
+                    username.className = 'nav-username';
+                    username.textContent = profileData.handle || profileData.username || 'OPERATOR';
+                    const rank = document.createElement('div');
+                    rank.className = 'nav-rank';
+                    rank.textContent = profileData.rank || '';
+                    info.append(username, rank);
+                    navUser.replaceChildren(avatar, info);
+                    return true;
+                } catch (error) {
+                    // If not authenticated, show login prompt
+                    navUser.innerHTML = `
+                        <div class="nav-avatar">
+                            <div class="avatar-initial">?</div>
+                        </div>
+                        <div class="nav-user-info">
+                            <div class="nav-username">OPERATOR</div>
+                            <div class="nav-rank">NOT LOGGED IN</div>
+                        </div>
+                    `;
+                    return false;
+                }
+            }
+
+            // Poll only after authentication succeeds; anonymous pages need no refresh.
+            if (pageAuthenticated) {
+                updateNavUser().then(isAuthenticated => {
+                    if (isAuthenticated) setInterval(updateNavUser, 30000);
+                });
+            } else {
+                const username = document.createElement('div');
+                username.className = 'nav-username';
+                username.textContent = 'NOT LOGGED IN';
+                const login = document.createElement('a');
+                login.className = 'nav-link';
+                login.href = '/login';
+                login.textContent = 'OPERATOR LOGIN';
+                navUser.replaceChildren(username, login);
+            }
+
+            // Load persisted interface preferences on every authenticated page.
+            if (!pageAuthenticated) return;
+            fetch('/api/user/settings', { credentials: 'include' })
+                .then(response => response.ok ? response.json() : null)
+                .then(settings => {
+                    if (!settings) return;
+                    const root = document.documentElement;
+                    const accents = {
+                        phosphor: ['#00ff41', '#00cc33'],
+                        cyan: ['#00ffff', '#00cccc'],
+                        amber: ['#ffbf00', '#cc9900'],
+                        magenta: ['#ff00ff', '#cc00cc']
+                    };
+                    const fonts = {
+                        vt323: "'VT323', monospace",
+                        share_tech: "'Share Tech Mono', monospace",
+                        orbitron: "'Orbitron', sans-serif",
+                        press_start: "'Press Start 2E', monospace"
+                    };
+                    const accent = accents[settings.theme_accent];
+                    if (accent) {
+                        root.style.setProperty('--accent-primary', accent[0]);
+                        root.style.setProperty('--accent-primary-dim', accent[1]);
+                    }
+                    if (fonts[settings.terminal_font]) root.style.setProperty('--font-mono', fonts[settings.terminal_font]);
+                    if (Number.isInteger(settings.brightness)) root.style.setProperty('--interface-brightness', `${settings.brightness}%`);
+                    if (Number.isInteger(settings.contrast)) root.style.setProperty('--interface-contrast', `${settings.contrast + 50}%`);
+                    root.classList.toggle('reduced-motion', Boolean(settings.reduced_motion));
+                    root.classList.toggle('scanlines-disabled', !settings.crt_scanlines);
+                    const boot = document.getElementById('bootSequence');
+                    if (boot && !settings.boot_sequence_enabled) boot.remove();
+                })
+                .catch(() => {});
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,697 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app.APP_NAME }} - Operator Profile{% endblock %}
+
+{% block content %}
+<div class="operator-hideout panel-retro">
+    <header class="hideout-header">
+        <h1>OPERATOR HIDEOUT</h1>
+        <p class="tagline">WHERE INTELLIGENCE MEANS SURVIVAL</p>
+        <div class="nav-tabs">
+            <button class="tab-btn active" data-tab="overview">OVERVIEW</button>
+            <button class="tab-btn" data-tab="missions">MISSIONS</button>
+            <button class="tab-btn" data-tab="achievements">ACHIEVEMENTS</button>
+            <button class="tab-btn" data-tab="terminal">TERMINAL</button>
+            <button class="tab-btn" data-tab="settings">SETTINGS</button>
+        </div>
+    </header>
+
+    <div class="hideout-content">
+        <!-- Overview Tab -->
+        <section class="tab-panel active" id="overviewTab">
+            <div class="operator-profile-panel panel-retro">
+                <div class="operator-avatar-large">
+                    <div class="avatar-initial" id="profileInitial">?</div>
+                    <div class="avatar-details">
+                        <div class="avatar-rank" id="profileRank">SCRIPT KIDDIE</div>
+                        <div class="avatar-handle" id="profileHandle">OPERATOR</div>
+                    </div>
+                </div>
+
+                <div class="profile-stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">LEVEL</div>
+                        <div class="stat-value" id="profileLevel">01</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">REPUTATION</div>
+                        <div class="stat-value" id="profileReputation">NEUTRAL</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">XP</div>
+                        <div class="stat-value" id="profileXP">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">NEXT LEVEL</div>
+                        <div class="stat-value" id="profileNextLevel">500</div>
+                    </div>
+                </div>
+
+                <div class="xp-progress-large">
+                    <div class="xp-progress-bar-large" id="profileXPBar"></div>
+                    <div class="xp-progress-text-large" id="profileXPText">0 / 500 XP</div>
+                </div>
+
+                <div class="profile-details">
+                    <div class="detail-item">
+                        <span class="detail-label">OPERATOR ID:</span>
+                        <span class="detail-value" id="profileID">----</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">ACTIVE SINCE:</span>
+                        <span class="detail-value" id="profileSince">----</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">LAST ACTIVE:</span>
+                        <span class="detail-value" id="profileLastActive">----</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">SECURITY CLEARANCE:</span>
+                        <span class="detail-value" id="profileClearance">LEVEL 1</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-stats panel-retro" style="grid-column: 1 / -1;">
+                <h2 style="color: var(--accent-primary); margin-bottom: 1rem;">OPERATIONS SUMMARY</h2>
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                    <div class="stat-card">
+                        <div class="stat-label">MISSIONS COMPLETED</span>
+                        <div class="stat-value" id="overviewMissionsCompleted">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">TOTAL ATTEMPTS</div>
+                        <div class="stat-value" id="overviewTotalAttempts">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">HINTS USED</div>
+                        <div class="stat-value" id="overviewHintsUsed">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">REQUESTS INSPECTED</div>
+                        <div class="stat-value" id="overviewRequestsInspected">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">ACHIEVEMENTS UNLOCKED</div>
+                        <div class="stat-value" id="overviewAchievementsUnlocked">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">DAILY CONTRACTS COMPLETED</div>
+                        <div class="stat-value" id="overviewContractsCompleted">0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Missions Tab -->
+        <section class="tab-panel" id="missionsTab">
+            <h2 style="color: var(--accent-primary); margin-bottom: 1.5rem;">MISSION ARCHIVE</h2>
+            <div class="missions-archive panel-retro">
+                <div class="missions-filter" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="filter-btn active" data-filter="all">ALL OPERATIONS</button>
+                    <button class="filter-btn" data-filter="available">AVAILABLE</button>
+                    <button class="filter-btn" data-filter="in_progress">ACTIVE</button>
+                    <button class="filter-btn" data-filter="completed">COMPLETED</button>
+                </div>
+                <div class="missions-list" id="missionsList">
+                    <!-- Mission cards will be populated by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Achievements Tab -->
+        <section class="tab-panel" id="achievementsTab">
+            <h2 style="color: var(--accent-primary); margin-bottom: 1.5rem;">ACHIEVEMENT VAULT</h2>
+            <div class="achievements-vault panel-retro">
+                <div class="achievements-stats" style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div class="stat-card">
+                        <div class="stat-label">TOTAL ACHIEVEMENTS</div>
+                        <div class="stat-value" id="achievementsTotal">5</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">UNLOCKED</div>
+                        <div class="stat-value" id="achievementsUnlocked">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">PERCENTAGE COMPLETE</div>
+                        <div class="stat-value" id="achievementsPercentage">0%</div>
+                    </div>
+                </div>
+                <div class="achievements-grid" id="achievementsGrid">
+                    <!-- Achievement cards will be populated by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Terminal Tab -->
+        <section class="tab-panel" id="terminalTab">
+            <h2 style="color: var(--accent-primary); margin-bottom: 1.5rem;">SYSTEM TERMINAL</h2>
+            <div class="terminal-container panel-retro">
+                <div class="terminal-window" id="profileTerminalOutput">
+                    <div class="terminal-prompt">
+                        <span>VERYSECUREWEBSITE TERMINAL v2.4</span>
+                    </div>
+                    <div id="profileTerminalLines"></div>
+                    <div class="terminal-prompt">
+                        <span>operator@vsw:~$</span>
+                        <input type="text" id="profileTerminalInput" autocomplete="off" placeholder="">
+                    </div>
+                </div>
+                <div class="terminal-controls" style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn-retro btn-retro-secondary" id="clearTerminal">CLEAR</button>
+                    <button class="btn-retro btn-retro-secondary" id="terminalHelp">HELP</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Tab -->
+        <section class="tab-panel" id="settingsTab">
+            <h2 style="color: var(--accent-primary); margin-bottom: 1.5rem;">OPERATOR SETTINGS</h2>
+            <div class="settings-panel panel-retro">
+                <div class="settings-section">
+                    <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">INTERFACE PREFERENCES</h3>
+                    <div class="setting-item">
+                        <label class="setting-label" for="settingBootSequence">BOOT SEQUENCE</label>
+                        <label class="setting-toggle">
+                            <input type="checkbox" id="settingBootSequence">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label" for="settingScanlines">CRT SCANLINES</label>
+                        <label class="setting-toggle">
+                            <input type="checkbox" id="settingScanlines" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label" for="settingReducedMotion">REDUCED MOTION</label>
+                        <label class="setting-toggle">
+                            <input type="checkbox" id="settingReducedMotion">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">TERMINAL FONT</label>
+                        <select id="settingTerminalFont">
+                            <option value="vt323">VT323 (CLASSIC)</option>
+                            <option value="share_tech">SHARE TECH MONO</option>
+                            <option value="orbitron">ORBITRON (MODERN)</option>
+                            <option value="press_start">PRESS START 2E (RETRO)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">AUDIO PREFERENCES</h3>
+                    <div class="setting-item">
+                        <label class="setting-label">MASTER VOLUME</label>
+                        <div class="slider-container">
+                            <input type="range" id="settingVolume" min="0" max="100" value="50">
+                            <span class="slider-value" id="volumeValue">50%</span>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label" for="settingSystemSounds">SYSTEM SOUNDS</label>
+                        <label class="setting-toggle">
+                            <input type="checkbox" id="settingSystemSounds">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label" for="settingMusic">BACKGROUND MUSIC</label>
+                        <label class="setting-toggle">
+                            <input type="checkbox" id="settingMusic">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">DISPLAY PREFERENCES</h3>
+                    <div class="setting-item">
+                        <label class="setting-label">THEME ACCENT</label>
+                        <select id="settingThemeAccent">
+                            <option value="phosphor">PHOSPHOR GREEN</option>
+                            <option value="cyan">CYAN</option>
+                            <option value="amber">AMBER</option>
+                            <option value="magenta">MAGENTA</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">BRIGHTNESS</label>
+                        <div class="slider-container">
+                            <input type="range" id="settingBrightness" min="0" max="100" value="70">
+                            <span class="slider-value" id="brightnessValue">70%</span>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">CONTRAST</label>
+                        <div class="slider-container">
+                            <input type="range" id="settingContrast" min="0" max="100" value="80">
+                            <span class="slider-value" id="contrastValue">80%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-actions" style="margin-top: 2rem; text-align: center;">
+                    <button class="btn-retro" id="saveSettings">APPLY CHANGES</button>
+                    <button class="btn-retro btn-retro-secondary" id="resetSettings">RESET TO DEFAULT</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="hideout-footer">
+        <div class="footer-content">
+            <span class="footer-status" id="footerStatus">SYSTEM STATUS: NOMINAL</span>
+            <span class="footer-divider">|</span>
+            <span class="footer-time" id="footerTime">00:00:00</span>
+            <span class="footer-divider">|</span>
+            <span class="footer-label">RETRO CYBERPUNK EDITION</span>
+        </div>
+    </footer>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Tab switching
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+
+            // Update active tab button
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update active tab panel
+            tabPanels.forEach(panel => {
+                if (panel.id === `${tabName}Tab`) {
+                    panel.classList.add('active');
+                } else {
+                    panel.classList.remove('active');
+                }
+            });
+        });
+    });
+
+    // Terminal in profile page
+    class ProfileTerminal {
+        constructor() {
+            this.output = document.getElementById('profileTerminalLines');
+            this.input = document.getElementById('profileTerminalInput');
+            this.clearBtn = document.getElementById('clearTerminal');
+            this.helpBtn = document.getElementById('terminalHelp');
+            this.history = [];
+            this.historyIndex = 0;
+            this.init();
+        }
+
+        init() {
+            this.clearBtn.addEventListener('click', () => {
+                this.output.innerHTML = '';
+                this.print('TERMINAL CLEARED');
+                this.print('operator@vsw:~$ ');
+            });
+
+            this.helpBtn.addEventListener('click', () => {
+                this.print('AVAILABLE COMMANDS:');
+                this.print('  help - Show this help');
+                this.print('  whoami - Show operator info');
+                this.print('  status - Show system status');
+                this.print('  missions - Show mission status');
+                this.print('  achievements - Show achievements');
+                this.print('  clear - Clear terminal');
+                this.print('  exit - Return to interface');
+            });
+
+            this.input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    this.executeCommand(this.input.value.trim());
+                    this.input.value = '';
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.navigateHistory(-1);
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.navigateHistory(1);
+                }
+            });
+
+            this.print('VERYSECUREWEBSITE TERMINAL v2.4 - TYPE "HELP" FOR AVAILABLE COMMANDS');
+            this.print('operator@vsw:~$ ');
+        }
+
+        print(text) {
+            const line = document.createElement('div');
+            line.textContent = text;
+            this.output.appendChild(line);
+            this.output.scrollTop = this.output.scrollHeight;
+        }
+
+        executeCommand(command) {
+            if (!command) {
+                this.print('operator@vsw:~$ ');
+                return;
+            }
+
+            this.history.push(command);
+            this.historyIndex = this.history.length;
+
+            this.print(`> ${command}`);
+
+            switch (command.toLowerCase()) {
+                case 'help':
+                    this.print('AVAILABLE COMMANDS:');
+                    this.print('  help - Show this help');
+                    this.print('  whoami - Show operator info');
+                    this.print('  status - Show system status');
+                    this.print('  missions - Show mission status');
+                    this.print('  achievements - Show achievements');
+                    this.print('  clear - Clear terminal');
+                    this.print('  exit - Return to interface');
+                    break;
+                case 'whoami':
+                    this.print('FETCHING OPERATOR INFORMATION...');
+                    fetch('/api/operator/profile', { credentials: 'include' }).then(response => response.json()).then(data => {
+                        this.print(`OPERATOR: ${data.handle || data.username}`);
+                        this.print(`RANK: ${data.rank}`);
+                        this.print(`LEVEL: ${data.level}`);
+                        this.print(`XP: ${data.xp}`);
+                    }).catch(() => this.print('PROFILE REQUEST FAILED'));
+                    break;
+                case 'status':
+                    fetch('/api/health').then(response => response.json()).then(data => this.print(`SERVICE: ${data.service} — ${data.status.toUpperCase()}`)).catch(() => this.print('HEALTH REQUEST FAILED'));
+                    break;
+                case 'missions':
+                    fetch('/api/labs/progress', { credentials: 'include' }).then(response => response.json()).then(data => {
+                        this.print('MISSION STATUS:');
+                        Object.entries(data.labs).forEach(([id, lab]) => this.print(`  ${id.toUpperCase()}: ${lab.status.toUpperCase()}`));
+                    }).catch(() => this.print('MISSION REQUEST FAILED'));
+                    break;
+                case 'achievements':
+                    fetch('/api/achievements', { credentials: 'include' }).then(response => response.json()).then(data => {
+                        this.print('ACHIEVEMENT PROGRESS:');
+                        data.achievements.forEach(item => this.print(`  ${item.name}: ${item.unlocked ? 'UNLOCKED' : 'LOCKED'}`));
+                    }).catch(() => this.print('ACHIEVEMENT REQUEST FAILED'));
+                    break;
+                case 'clear':
+                    this.output.innerHTML = '';
+                    this.print('TERMINAL CLEARED');
+                    this.print('operator@vsw:~$ ');
+                    break;
+                case 'exit':
+                    // In a real implementation, this might hide the terminal
+                    this.print('TERMINAL SESSION ENDED');
+                    break;
+                default:
+                    this.print(`COMMAND NOT RECOGNIZED: ${command}`);
+                    this.print('TYPE "HELP" FOR AVAILABLE COMMANDS');
+            }
+
+            this.print('operator@vsw:~$ ');
+        }
+
+        navigateHistory(direction) {
+            if (direction === -1 && this.historyIndex > 0) {
+                this.historyIndex--;
+            } else if (direction === 1 && this.historyIndex < this.history.length - 1) {
+                this.historyIndex++;
+            }
+
+            if (this.historyIndex >= 0 && this.historyIndex < this.history.length) {
+                this.input.value = this.history[this.historyIndex];
+            } else if (this.historyIndex >= this.history.length) {
+                this.input.value = '';
+            }
+        }
+    }
+
+    // Initialize profile terminal
+    window.profileTerminal = new ProfileTerminal();
+
+    // Settings controls
+    const bootSequenceCheckbox = document.getElementById('settingBootSequence');
+    const scanlinesCheckbox = document.getElementById('settingScanlines');
+    const reducedMotionCheckbox = document.getElementById('settingReducedMotion');
+    const terminalFontSelect = document.getElementById('settingTerminalFont');
+    const themeAccentSelect = document.getElementById('settingThemeAccent');
+    const volumeSlider = document.getElementById('settingVolume');
+    const volumeValueSpan = document.getElementById('volumeValue');
+    const brightnessSlider = document.getElementById('settingBrightness');
+    const brightnessValueSpan = document.getElementById('brightnessValue');
+    const contrastSlider = document.getElementById('settingContrast');
+    const contrastValueSpan = document.getElementById('contrastValue');
+    const systemSoundsCheckbox = document.getElementById('settingSystemSounds');
+    const musicCheckbox = document.getElementById('settingMusic');
+    const saveSettingsBtn = document.getElementById('saveSettings');
+    const resetSettingsBtn = document.getElementById('resetSettings');
+
+    // Update value displays
+    volumeSlider.addEventListener('input', () => {
+        volumeValueSpan.textContent = `${volumeSlider.value}%`;
+    });
+
+    brightnessSlider.addEventListener('input', () => {
+        brightnessValueSpan.textContent = `${brightnessSlider.value}%`;
+    });
+
+    contrastSlider.addEventListener('input', () => {
+        contrastValueSpan.textContent = `${contrastSlider.value}%`;
+    });
+
+    // Save settings
+    saveSettingsBtn.addEventListener('click', async () => {
+        const settings = {
+            boot_sequence_enabled: bootSequenceCheckbox.checked,
+            crt_scanlines: scanlinesCheckbox.checked,
+            reduced_motion: reducedMotionCheckbox.checked,
+            terminal_font: terminalFontSelect.value,
+            theme_accent: themeAccentSelect.value,
+            sound_enabled: systemSoundsCheckbox.checked,
+            music_enabled: musicCheckbox.checked,
+            volume: parseInt(volumeSlider.value),
+            brightness: parseInt(brightnessSlider.value),
+            contrast: parseInt(contrastSlider.value)
+        };
+
+        try {
+            const response = await fetch('/api/user/settings', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken()
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (response.ok) {
+                showToast('SETTINGS APPLIED SUCCESSFULLY', 'success');
+                // Apply some settings immediately
+                if (reducedMotionCheckbox.checked) {
+                    document.documentElement.style.setProperty('animation-duration', '0.001ms');
+                    document.documentElement.style.setProperty('transition-duration', '0.001ms');
+                } else {
+                    document.documentElement.style.removeProperty('animation-duration');
+                    document.documentElement.style.removeProperty('transition-duration');
+                }
+            } else {
+                showToast('FAILED TO APPLY SETTINGS', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            showToast('ERROR APPLYING SETTINGS', 'error');
+        }
+    });
+
+    // Reset settings
+    resetSettingsBtn.addEventListener('click', () => {
+        bootSequenceCheckbox.checked = true;
+        scanlinesCheckbox.checked = true;
+        reducedMotionCheckbox.checked = false;
+        terminalFontSelect.value = 'vt323';
+        themeAccentSelect.value = 'phosphor';
+        systemSoundsCheckbox.checked = false;
+        musicCheckbox.checked = false;
+        volumeSlider.value = 50;
+        brightnessSlider.value = 70;
+        contrastSlider.value = 80;
+
+        volumeValueSpan.textContent = '50%';
+        brightnessValueSpan.textContent = '70%';
+        contrastValueSpan.textContent = '80%';
+
+        // Apply reset
+        saveSettingsBtn.click();
+    });
+
+    // Load current settings
+    async function loadSettings() {
+        try {
+            const response = await fetch('/api/user/settings', {
+                credentials: 'include'
+            });
+            const settings = await response.json();
+
+            bootSequenceCheckbox.checked = settings.boot_sequence_enabled ?? true;
+            scanlinesCheckbox.checked = settings.crt_scanlines ?? true;
+            reducedMotionCheckbox.checked = settings.reduced_motion || false;
+            terminalFontSelect.value = settings.terminal_font || 'vt323';
+            themeAccentSelect.value = settings.theme_accent || 'phosphor';
+            systemSoundsCheckbox.checked = settings.sound_enabled || false;
+            musicCheckbox.checked = settings.music_enabled || false;
+            volumeSlider.value = settings.volume || 50;
+            brightnessSlider.value = settings.brightness || 70;
+            contrastSlider.value = settings.contrast || 80;
+
+            volumeValueSpan.textContent = `${volumeSlider.value}%`;
+            brightnessValueSpan.textContent = `${brightnessSlider.value}%`;
+            contrastValueSpan.textContent = `${contrastSlider.value}%`;
+
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    }
+
+    // Initialize clock
+    function updateClock() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+        document.getElementById('footerTime').textContent = timeString;
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Initialize
+    loadSettings();
+
+    const labNames = { bola: 'DATA BREACH', bfla: 'PRIVILEGE OVERRIDE', xss: 'SCRIPT INJECTION' };
+    const labCategories = { bola: 'AUTHORIZATION', bfla: 'AUTHORIZATION', xss: 'INJECTION' };
+    let profileData = null;
+    let progressData = { labs: {} };
+    let achievementsData = { achievements: [] };
+
+    async function loadOperatorData() {
+        const [profileResponse, progressResponse, achievementsResponse, contractsResponse] = await Promise.all([
+            fetch('/api/operator/profile', { credentials: 'include' }),
+            fetch('/api/labs/progress', { credentials: 'include' }),
+            fetch('/api/achievements', { credentials: 'include' }),
+            fetch('/api/daily-contracts', { credentials: 'include' })
+        ]);
+        for (const response of [profileResponse, progressResponse, achievementsResponse, contractsResponse]) {
+            if (!response.ok) throw new Error('Unable to load operator data');
+        }
+        [profileData, progressData, achievementsData] = await Promise.all([
+            profileResponse.json(), progressResponse.json(), achievementsResponse.json()
+        ]);
+        const contracts = await contractsResponse.json();
+        const handle = profileData.handle || profileData.username;
+        document.getElementById('profileInitial').textContent = handle.slice(0, 1).toUpperCase();
+        document.getElementById('profileHandle').textContent = handle;
+        document.getElementById('profileRank').textContent = profileData.rank;
+        document.getElementById('profileLevel').textContent = String(profileData.level).padStart(2, '0');
+        document.getElementById('profileID').textContent = `OP-${String(profileData.user_id).padStart(4, '0')}`;
+        document.getElementById('profileSince').textContent = profileData.created_at?.slice(0, 10) || '—';
+        document.getElementById('profileLastActive').textContent = profileData.updated_at?.slice(0, 10) || '—';
+        document.getElementById('profileClearance').textContent = `LEVEL ${profileData.level}`;
+        document.getElementById('profileXP').textContent = profileData.xp;
+        document.getElementById('profileNextLevel').textContent = profileData.xp_for_next_level;
+        const [xpInLevel, xpNeeded] = profileData.xp_progress_in_level;
+        document.getElementById('profileXPBar').style.width = `${xpNeeded ? Math.min(100, xpInLevel / xpNeeded * 100) : 100}%`;
+        document.getElementById('profileXPText').textContent = `${xpInLevel} / ${xpNeeded} XP`;
+        document.getElementById('overviewMissionsCompleted').textContent = profileData.total_missions_completed;
+        document.getElementById('overviewTotalAttempts').textContent = profileData.total_attempts;
+        document.getElementById('overviewHintsUsed').textContent = profileData.hints_used;
+        document.getElementById('overviewRequestsInspected').textContent = profileData.requests_inspected;
+        document.getElementById('overviewAchievementsUnlocked').textContent = achievementsData.achievements.filter(item => item.unlocked).length;
+        document.getElementById('overviewContractsCompleted').textContent = contracts.contracts.filter(item => item.status === 'completed' || item.status === 'claimed').length;
+        initMissionsList();
+        initAchievementsGrid();
+    }
+    loadOperatorData().catch(error => showToast(error.message, 'error'));
+
+    // Mission filter buttons
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const missionsList = document.getElementById('missionsList');
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // In a real implementation, we would filter missions here
+            showToast(`FILTER SET TO: ${btn.dataset.filter.toUpperCase()}`, 'info');
+        });
+    });
+
+    function initMissionsList() {
+        const missions = Object.keys(labNames).map(id => ({ id, name: labNames[id], category: labCategories[id], status: progressData.labs[id]?.status || 'not_started' }));
+        missionsList.innerHTML = '';
+        missions.forEach(mission => {
+            const missionEl = document.createElement('div');
+            missionEl.className = `mission-item panel-retro ${mission.status}`;
+            missionEl.innerHTML = `
+                <div class="mission-header">
+                    <span class="mission-id">[${mission.id}]</span>
+                    <span class="mission-status status-${mission.status}">${mission.status.toUpperCase()}</span>
+                </div>
+                <h3 class="mission-title">${mission.name}</h3>
+                <p class="mission-category">${mission.category}</p>
+                <div class="mission-actions">
+                    <button class="btn-retro btn-retro-sm" onclick="launchMission('${mission.id}')">LAUNCH</button>
+                </div>
+            `;
+            missionsList.appendChild(missionEl);
+        });
+    }
+
+    initMissionsList();
+
+    function initAchievementsGrid() {
+        const achievementsGrid = document.getElementById('achievementsGrid');
+        achievementsGrid.innerHTML = '';
+
+        achievementsData.achievements.forEach(ach => {
+            const achievementEl = document.createElement('div');
+            achievementEl.className = `achievement-item panel-retro ${ach.unlocked ? 'unlocked' : 'locked'}`;
+            achievementEl.innerHTML = `
+                <div class="achievement-icon">${ach.icon}</div>
+                <div class="achievement-name">${ach.name}</div>
+                <p class="achievement-description">${ach.description}</p>
+            `;
+            achievementsGrid.appendChild(achievementEl);
+        });
+    }
+
+    initAchievementsGrid();
+
+    // Mission launcher function
+    window.launchMission = function(missionId) {
+        fetch(`/labs/${missionId}/status`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+            body: JSON.stringify({ status: 'in_progress' })
+        }).then(response => {
+            if (!response.ok) throw new Error('Could not launch mission');
+            window.location.href = `/${missionId}_lab.html`;
+        }).catch(error => showToast(error.message, 'error'));
+    };
+
+    // Footer status update (simulated)
+    setInterval(() => {
+        const statuses = ['NOMINAL', 'OPTIMAL', 'STABLE', 'SECURE'];
+        const currentStatus = document.getElementById('footerStatus').textContent.split(': ')[1];
+        const currentIndex = statuses.indexOf(currentStatus);
+        const newIndex = (currentIndex + Math.floor(Math.random() * 3)) % statuses.length;
+        document.getElementById('footerStatus').textContent = `SYSTEM STATUS: ${statuses[newIndex]}`;
+    }, 8000);
+});
+</script>
+{% endblock %}

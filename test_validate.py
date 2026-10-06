@@ -2,12 +2,30 @@
 import pytest
 from app.main import app
 from fastapi.testclient import TestClient
-from app.database import SessionLocal, engine, Base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from app.database import Base, get_db as app_get_db
 from app.models import User, Record
 
 import bcrypt
 
-client = TestClient(app)
+class CsrfAwareTestClient(TestClient):
+    def request(self, method, url, **kwargs):
+        if method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+            token = self.cookies.get("vsw_csrf")
+            if not token:
+                super().get("/login")
+                token = self.cookies.get("vsw_csrf")
+            headers = dict(kwargs.get("headers") or {})
+            headers.setdefault("X-CSRF-Token", token or "")
+            kwargs["headers"] = headers
+        return super().request(method, url, **kwargs)
+
+
+client = CsrfAwareTestClient(app)
+engine = None
+SessionLocal = None
 
 
 def get_db():
@@ -20,15 +38,21 @@ def get_db():
 
 
 def setup_module(module):
-    """Set up database for tests - fresh tables and seed synthetic data."""
+    """Use an isolated in-memory database; do not reset project data."""
+    global engine, SessionLocal
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    SessionLocal = sessionmaker(autoflush=False, autocommit=False, bind=engine)
+    app.dependency_overrides[app_get_db] = get_db
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     seed_data()
 
 
 def teardown_module(module):
-    """Drop tables after tests run."""
+    """Clean up only the in-memory test database."""
     Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.pop(app_get_db, None)
+    engine.dispose()
 
 
 def seed_data():
@@ -80,7 +104,7 @@ def do_register(username: str, email: str, password: str) -> dict:
     """Register a new user and return response (normalized to include status)."""
     resp = client.post(
         "/auth/register",
-        json={"username": username, "email": email, "password": password}
+        json={"username": username, "email": email, "password": password, "confirm_password": password}
     )
     if resp.status_code == 200:
         result = resp.json()
@@ -99,11 +123,11 @@ def test_bola_idor_alice_access_bobs_record():
     # Login as alice
     user_info = do_login("alice", "labtest123")
     assert user_info.get("status") in (200, 302), f"Login failed: {user_info}"
-    
+
     # Access Bob's record (ID 3) as Alice
     resp = client.get("/records/3")
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
-    
+
     data = resp.json()
     # In the VULNERABLE implementation, Alice should see Bob's record data
     # This confirms the BOLA/IDOR vulnerability
@@ -111,7 +135,7 @@ def test_bola_idor_alice_access_bobs_record():
         f"Expected Bob's Medical Record, got: {data['title']}"
     assert data["owner"] == "bob", \
         f"Expected owner 'bob', got: {data['owner']}"
-    
+
     print(f"\n[BOLA/IDOR VALIDATED] Alice can access Bob's record: '{data['title']}' (owner: {data['owner']})")
     print("  This confirms the BOLA/IDOR vulnerability: no ownership validation on /records/{id}")
 
@@ -123,20 +147,20 @@ def test_bola_idor_alice_own_record():
     # Login as alice
     user_info = do_login("alice", "labtest123")
     assert user_info.get("status") in (200, 302), f"Login failed: {user_info}"
-    
+
     # Access Alice's record (ID 1) as Alice
     resp = client.get("/records/1")
     assert resp.status_code == 200
     data = resp.json()
     assert data["title"] == "Alice's Medical Record"
     assert data["owner"] == "alice"
-    
+
     print(f"[OK] Alice can access her own record: '{data['title']}' (owner: {data['owner']})")
 
 
 def test_bfla_regular_user_access_admin():
     """Test BFLA: Regular user should be able to access admin endpoints (vulnerable).
-    
+
     In the vulnerable implementation, /admin/users and /admin/debug have no role check.
     """
     client.cookies.clear()
@@ -144,17 +168,17 @@ def test_bfla_regular_user_access_admin():
     # Login as alice (regular user)
     user_info = do_login("alice", "labtest123")
     assert user_info.get("status") in (200, 302), f"Login failed: {user_info}"
-    
+
     # Access /admin/users as Alice - should work in the vulnerable implementation
     resp = client.get("/admin/users")
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
-    
+
     data = resp.json()
     # In the vulnerable implementation, Alice can see the admin users list
     usernames = [u["username"] for u in data]
     assert "alice" in usernames and "bob" in usernames, \
         f"Expected alice and bob in user list, got: {usernames}"
-    
+
     print(f"[OK] Regular user can access /admin/users (expected BFLA behavior): {usernames}")
 
 
@@ -165,20 +189,20 @@ def test_bfla_admin_user_access():
     # Login as admin
     user_info = do_login("admin", "admin123")
     assert user_info.get("status") in (200, 302), f"Login failed: {user_info}"
-    
+
     # Admin should be able to access /admin/users
     resp = client.get("/admin/users")
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
-    
+
     data = resp.json()
     usernames = [u["username"] for u in data]
     assert "admin" in usernames, f"Expected admin in user list, got: {usernames}"
-    
+
     # Admin should also be able to access /admin/debug
     resp = client.get("/admin/debug")
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
     data = resp.json()
-    
+
     print(f"[OK] Admin user can access admin endpoints: {usernames}")
 
 
@@ -188,18 +212,18 @@ def test_api_records_access_control():
 
     user_info = do_login("alice", "labtest123")
     assert user_info.get("status") in (200, 302), f"Login failed: {user_info}"
-    
+
     # Access /api/records as Alice
     resp = client.get("/api/records")
     assert resp.status_code == 200
     data = resp.json()
-    
+
     # Should only return Alice's records (records 1 and 2)
     record_ids = [r["id"] for r in data]
     assert len(record_ids) == 2, f"Expected exactly 2 records, got {record_ids}"
     assert all(r_id in [1, 2] for r_id in record_ids), \
         f"Expected only Alice's records (1, 2), got: {record_ids}"
-    
+
     print(f"[OK] API /api/records returns only Alice's records: {record_ids}")
 
 
@@ -209,14 +233,14 @@ def test_list_records_returns_all():
 
     user_info = do_login("alice", "labtest123")
     assert user_info.get("status") in (200, 302), f"Login failed: {user_info}"
-    
+
     resp = client.get("/records")
     assert resp.status_code == 200
     data = resp.json()
-    
+
     # Returns all 4 records regardless of owner - this is the vulnerable behavior
     assert len(data) == 4, f"Expected 4 records, got {len(data)}"
-    
+
     titles = [r["title"] for r in data]
     print(f"[OK] GET /records returns all {len(data)} records (no ownership filter - vulnerable): {titles}")
 
@@ -228,16 +252,16 @@ def test_login_logout():
     # Login
     user_info = do_login("alice", "labtest123")
     assert user_info.get("status") in (200, 302), f"Login failed: {user_info}"
-    
+
     # Logout
     resp = client.post("/auth/logout")
     # Logout may redirect; check status
     assert resp.status_code in (200, 302), f"Logout failed: {resp.status_code}: {resp.text}"
-    
+
     # Access /auth/me after logout - should be 401
     resp = client.get("/auth/me")
     assert resp.status_code == 401, f"Expected 401 after logout, got {resp.status_code}: {resp.text}"
-    
+
     print("[OK] Login/logout works correctly")
 
 
@@ -246,18 +270,18 @@ def test_password_never_plaintext():
     client.cookies.clear()
 
     # Register a new user
-    resp = do_register("testuser2", "test2@test.com", "mypassword")
+    resp = do_register("testuser2", "test2@test.com", "MyStrongPassword123")
     # Registration may redirect; check status
     assert resp.get("status") in (200, 302), f"Register failed: {resp}"
-    
+
     # Login with the correct password
-    user_info = do_login("testuser2", "mypassword")
+    user_info = do_login("testuser2", "MyStrongPassword123")
     assert user_info.get("status") in (200, 302), f"Login with correct password failed: {user_info}"
-    
+
     # Login with wrong password should fail
     user_info2 = do_login("testuser2", "wrongpassword")
     assert user_info2.get("status") == 401, "Wrong password should not login"
-    
+
     print("[OK] Passwords are properly hashed with bcrypt")
 
 
@@ -274,7 +298,7 @@ def test_user_roles():
     assert resp.status_code == 200
     me_data = resp.json()
     assert me_data["role"] == "user", f"Alice should have role 'user', got '{me_data['role']}'"
-    
+
     # Login as admin
     user_info2 = do_login("admin", "admin123")
     assert user_info2.get("status") in (200, 302), f"Login failed: {user_info2}"
@@ -282,7 +306,7 @@ def test_user_roles():
     assert resp.status_code == 200
     me_data = resp.json()
     assert me_data["role"] == "admin", f"Admin should have role 'admin', got '{me_data['role']}'"
-    
+
     print("[OK] User roles are correctly assigned")
 
 
@@ -329,17 +353,17 @@ def test_auth_unauthenticated_access():
     # Auth/me (requires auth via session)
     resp = client.get("/auth/me")
     assert resp.status_code == 401, f"Unauthenticated /auth/me should be 401, got {resp.status_code}"
-    # Note: vulnerable endpoints enforce NO authentication at all. Unauthenticated
-    # requests to /records/{id} succeed with 200 (BOLA) - documented vulnerability.
+    # The lab still requires an authenticated session, while demonstrating BOLA
+    # through missing ownership validation between authenticated users.
     resp = client.get("/records/3")
-    assert resp.status_code == 200, f"Vulnerable /records/3 requires no auth, expected 200, got {resp.status_code}"
+    assert resp.status_code == 401, f"Unauthenticated /records/3 should be rejected, got {resp.status_code}"
     # Secure BOLA routes DO require authentication.
     resp = client.get("/secure/records/3")
     assert resp.status_code == 401, f"Unauthenticated secure record access should be 401, got {resp.status_code}"
     # Secure admin routes require admin role (403 when unauthenticated).
     resp = client.get("/secure/admin/users")
     assert resp.status_code == 403, f"Unauthenticated secure admin should be 403, got {resp.status_code}"
-    print("[OK] /auth/me requires auth (401); vulnerable endpoints grant unauthenticated access; "
+    print("[OK] /auth/me and vulnerable routes require a session; "
           "secure routes reject unauthenticated requests (401/403)")
 
 

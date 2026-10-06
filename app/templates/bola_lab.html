@@ -1,218 +1,400 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>VerySecureWebsite - Security Lab</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        :root {
-            --primary: #1a1a2e;
-            --secondary: #16213e;
-            --accent: #e94560;
-            --success: #4facfe;
-            --muted: #7f8c8d;
-            --bg: #f8f9fa;
-        }
-        
-        * { box-sizing: border-border: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: #333;
-            min-height: 100vh;
-            padding: 2rem;
-        }
-        
-        .max-width {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        h1 { margin-bottom: 1rem; color: var(--primary); }
-        .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 1.1rem; }
-        
-        /* Form styles for lab interaction */
-        .lab-form { background: white; padding: 2rem; border-radius: 8px; 
-                    margin-bottom: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%; padding: 0.75rem; border: 1px solid #ddd; 
-            border-radius: 4px; font-family: inherit; font-size: 1rem;
-        }
-        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-            outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(233,69,96,0.1);
-        }
-        
-        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; 
-               font-size: 1rem; font-weight: 500; cursor: pointer; 
-               transition: background 0.2s; margin-top: 0.5rem; }
-        .btn-secondary { background: #e2e8f0; color: #333; }
-        .btn-secondary:hover { background: #cbd5e0; }
-        .btn-primary { background: var(--accent); color: white; }
-        .btn-primary:hover { background: #ff5b70; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-success:hover { background: #38bdf8; }
-        
-        .notice { background: #fff3cd; border: 1px solid #ffeeba; 
-                  padding: 1rem; border-radius: 4px; margin: 1.5rem 0; color: #856404; }
-        .safety { background: #d1e7dd; border: 1px solid #badbcc; 
-                  padding: 1rem; border-radius: 4px; margin: 1.5rem 0; color: #0f5132; }
-    </style>
-</head>
-<body>
-    <div class="max-width">
-        <h1>BOLA/IDOR Lab</h1>
-        <p class="subtitle">Object Level Authorization Bypass</p>
-        
-        <div class="notice">
-            <strong>Safety Notice:</strong> This lab is for educational purposes only. 
-            All accounts and data are synthetic. No real systems are affected.
-        </div>
-        
-        <div class="lab-form">
-            <form id="bolaForm">
-                <div class="form-group">
-                    <label>Your Username</label>
-                    <input type="text" id="userUsername" placeholder="alice or bob">
-                </div>
-                <div class="form-group">
-                    <label>Target Record ID</label>
-                    <input type="number" id="targetRecordId" min="1" max="4" placeholder="1-4">
-                </div>
-                <button type="submit" class="btn btn-primary">Access Record</button>
-            </form>
-        </div>
-        
-        <div class="safety">
-            <strong>Learning Objective:</strong> Understand how inadequate object-level 
-            authorization allows users to access resources belonging to other users.
-        </div>
-        
-        <h3>Interaction Instructions</h3>
-        <ol>
-            <li>Login as Alice (username: alice, password: labtest123)</li>
-            <li>Attempt to access Bob's records (record IDs 3 or 4) via the API</li>
-            <li>Observe that the vulnerable endpoint returns Bob's record data without ownership validation</li>
-            <li>Compare with the secured implementation that enforces ownership checks</li>
-        </ol>
-        
-        <hr>
-        
-        <h2>Test API Endpoints</h2>
-        
-        <div class="lab-form">
-            <form id="apiForm">
-                <div class="form-group">
-                    <label>Endpoint</label>
-                    <select id="endpointSelect">
-                        <option value="/records/1">GET /records/1 (Alice's record)</option>
-                        <option value="/records/2">GET /records/2 (Alice's record)</option>
-                        <option value="/records/3">GET /records/3 (Bob's record)</option>
-                        <option value="/records/4">GET /records/4 (Bob's record)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Login as</label>
-                    <select id="userSelect">
-                        <option value="alice">Alice (user)</option>
-                        <option value="bob">Bob (user)</option>
-                        <option value="admin">Admin (admin)</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Execute Request</button>
-            </form>
-        </div>
-        
-        <div id="responseOutput" style="margin-top: 2rem; padding: 1rem; background: #f1f3f4; border-radius: 4; display: none;"></div>
-    </div>
+{% extends "base.html" %}
 
-    <script>
-        // Simulated users for the lab
-        const labUsers = {
-            alice: { password: 'labtest123', role: 'user', id: 1 },
-            bob: { password: 'labtest123', role: 'user', id: 2 },
-            admin: { password: 'admin123', role: 'admin', id: 3 }
-        };
-        
-        let currentUser = null;
-        let csrfToken = '';
-        
-        // Simulate login
-        function login(username) {
-            const user = labUsers[username];
-            if (!user) { alert('Unknown user'); return false; }
-            
-            // Simulate successful login - in real app this would set cookie
-            currentUser = { ...user, username };
-            csrfToken = 'demo-token-' + Date.now();
-            
-            document.getElementById('userUsername').value = username;
-            alert(`Logged in as ${username}`);
-            return true;
+{% block title %}VerySecureWebsite - BOLA/IDOR Mission{% endblock %}
+
+{% block content %}
+<!-- The existing lab content remains largely the same, but we'll add integration with the new system -->
+<header class="lab-header panel-retro">
+    <div class="title-group">
+        <h1>MISSION: DATA BREACH</h1>
+        <span class="meta badge badge-not-started" id="labBadge">NOT STARTED</span>
+    </div>
+    <div class="actions">
+        <button class="header-btn btn-retro-secondary" id="hintBtn" onclick="revealNextHint()">>_ HINT</button>
+        <button class="header-btn btn-retro" id="headerCompleteBtn" style="display:none" onclick="attemptCompletion()">MISSION COMPLETE</button>
+    </div>
+</header>
+
+<div class="main">
+    <!-- Existing lab content goes here -->
+    <!-- I'll keep the existing structure but add some retro styling touches -->
+
+    <!-- Intro Section -->
+    <section class="intro" id="introSection">
+        <div class="intro-card panel-retro">
+            <h2>MISSION BRIEFING: BOLA/IDOR</h2>
+            <p class="scenario">
+                You are assessing a fictional healthcare records platform. Authenticated patients can access their
+                medical records through an application interface. During preliminary testing, you suspect that the
+                application may rely on record identifiers without consistently verifying resource ownership.
+                Your task is to investigate the application's access controls and determine whether one patient
+                can retrieve another patient's records.
+            </p>
+        </div>
+
+        <div class="intro-card objective-box panel-retro">
+            <strong>MISSION OBJECTIVE:</strong> Determine whether your account can access another user's record by changing its object ID.
+        </div>
+
+        <div class="intro-card panel-retro">
+            <h2>OPERATOR ASSETS</h2>
+            <p>Sign in with your registered account. Each account has synthetic records. Register a second learner to create another record owner for this exercise.</p>
+        </div>
+
+        <div class="start-row">
+            <p style="font-size:0.85rem;color:#6b7280;">INITIATING MISSION SEQUENCE...</p>
+            <button class="btn-retro" onclick="startLab()">LAUNCH OPERATION</button>
+        </div>
+    </section>
+
+    <!-- The rest of the existing lab content remains -->
+    <!-- MediVault simulated application -->
+    <div class="medi-app" id="mediApp">
+        <div class="medi-frame">
+            <!-- Top bar -->
+            <div class="medi-topbar panel-retro">
+                <div class="brand">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+                    MEDIVAULT
+                </div>
+                <div class="user-info" id="mediUserInfo" style="display:flex">
+                    <span id="mediUserName">{{ current_user.username }}</span>
+                    <button class="logout-btn btn-retro-secondary" onclick="handleLogout()">TERMINATE</button>
+                </div>
+                <div class="user-info" id="mediLoginPrompt">
+                    <span style="font-size:0.8rem;opacity:0.8">AWAITING AUTHORIZATION</span>
+                </div>
+            </div>
+
+            <div class="medi-body">
+                <!-- Sidebar navigation -->
+                <nav class="medi-sidebar" id="mediSidebar" style="display:none">
+                    <button class="nav-item btn-retro-secondary active" data-view="dashboard" onclick="showView('dashboard')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        DASHBOARD
+                    </button>
+                    <button class="nav-item btn-retro-secondary" data-view="records" onclick="showView('records')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        RECORDS VAULT
+                    </button>
+                </nav>
+
+                <!-- Main content -->
+                <main class="medi-main" id="mediMain">
+                    <!-- Session fallback view -->
+                    <div class="medi-view active" id="view-login">
+                        <div class="mv-login-card panel-retro">
+                            <h3>AUTHORIZATION REQUIRED</h3>
+                            <p>Your session has expired. <a href="/login?next=/bola_lab.html">REAUTHENTICATE</a>.</p>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard view -->
+                    <div class="medi-view" id="view-dashboard">
+                        <div class="mv-welcome panel-retro">
+                            <h3 id="mvWelcome">WELCOME, OPERATOR</h3>
+                            <p>YOUR PERSONAL RECORDS VAULT</p>
+                        </div>
+                        <div class="mv-cards">
+                            <div class="mv-card clickable panel-retro" onclick="showView('records')">
+                                <div class="num" id="mvRecordCount">-</div>
+                                <div class="lbl">RECORDS IN VAULT</div>
+                            </div>
+                            <div class="mv-card panel-retro">
+                                <div class="num" style="color:#16a34a">SECURE</div>
+                                <div class="lbl">SESSION STATUS</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Records list view -->
+                    <div class="medi-view" id="view-records">
+                        <h3 style="font-size:1rem;color:var(--medi-text);margin-bottom:0.75rem;">YOUR MEDICAL RECORDS</h3>
+                        <form id="recordLookupForm" class="mv-form-group">
+                            <label for="recordLookupId">ACCESS RECORD BY ID</label>
+                            <div class="mv-actions">
+                                <input id="recordLookupId" type="number" min="1" step="1" required aria-describedby="recordLookupHelp">
+                                <button class="btn btn-sm btn-retro" type="submit">INITIATE ACCESS</button>
+                            </div>
+                            <p id="recordLookupHelp" style="font-size:0.8rem;color:var(--medi-muted);margin-top:0.35rem;">BEGIN WITH A KNOWN ID, THEN ATTEMPT UNAUTHORIZED ACCESS. REQUESTS AND RESPONSES APPEAR IN THE REQUEST INTERCEPTOR.</p>
+                            <div id="recordLookupStatus" class="mv-status" role="status"></div>
+                        </form>
+                        <div style="overflow-x:auto">
+                            <table class="mv-table">
+                                <thead><tr><th>ID</th><th>TITLE</th><th>OWNER</th><th>ACCESS LOG</th></tr></thead>
+                                <tbody id="mvRecordsBody"><tr><td colspan="4" style="color:#64748b;font-size:0.85rem;">INITIALIZING RECORDS VAULT...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Record detail view -->
+                    <div class="medi-view" id="view-record-detail">
+                        <div class="mv-detail-header">
+                            <button class="back-btn btn-retro-secondary" onclick="showView('records')">&lt; RETURN TO VAULT</button>
+                            <h3 id="mvDetailTitle">RECORD DETAIL</h3>
+                        </div>
+                        <div id="mvDetailFields"></div>
+                        <div class="mv-actions">
+                            <button class="btn btn-sm btn-retro-secondary" onclick="refetchSecure()">COMPARE WITH SECURE VAULT</button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- Request Interceptor -->
+            <div class="inspector panel-retro" id="inspector">
+                <div class="inspector-header" onclick="toggleInspector()">
+                    <div class="title"><span class="dot"></span> REQUEST INTERCEPTOR <span class="count" id="inspCount">(0)</span></div>
+                    <div style="display:flex;gap:0.5rem;align-items:center">
+                        <button class="insp-clear btn-retro-secondary" onclick="event.stopPropagation();clearInspector()">CLEAR LOG</button>
+                        <button class="toggle" id="inspToggle">▲</button>
+                    </div>
+                </div>
+                <div class="inspector-body open" id="inspBody"></div>
+            </div>
+        </div>
+
+        <!-- Mission Intelligence Panel -->
+        <div class="hints-panel panel-retro hidden" id="hintsPanel">
+            <h4>MISSION INTELLIGENCE</h4>
+            <div id="hintsContainer"></div>
+        </div>
+
+        <!-- Mission Completion -->
+        <div class="completion-section panel-retro" id="completionSection">
+            <div class="completion-card panel-retro">
+                <div class="icon">>>_</div>
+                <h2>MISSION ACCOMPLISHED</h2>
+                <p>YOU HAVE SUCCESSFULLY EXPLOITED THE BOLA/IDOR VULNERABILITY.</p>
+                <div class="impact panel-retro">
+                    <strong>VULNERABILITY EXPLOITED:</strong> BOLA / IDOR<br>
+                    THE VULNERABLE ENDPOINT AUTHENTICATED THE SESSION BUT DID NOT VERIFY THAT THE REQUESTED RECORD BELONGED TO THE AUTHENTICATED USER. BY MANIPULATING THE RECORD IDENTIFIER, YOU RETRIEVED ANOTHER PATIENT'S MEDICAL RECORD.
+                </div>
+                <div class="impact panel-retro">
+                    <strong>SECURITY IMPACT:</strong> UNAUTHORIZED ACCESS TO SENSITIVE RESOURCES. IN A REAL SYSTEM, THIS COULD EXPOSE PERSONAL HEALTH INFORMATION, FINANCIAL DATA, OR OTHER CONFIDENTIAL RECORDS BELONGING TO OTHER USERS.
+                </div>
+                <div class="remediation panel-retro">
+                    <strong>OPERATING PROCEDURE:</strong> ENFORCE OBJECT-LEVEL AUTHORIZATION ON EVERY REQUEST. VERIFY THAT THE AUTHENTICATED USER OWNS THE REQUESTED RESOURCE BEFORE RETURNING DATA. NEVER TRUST CLIENT-SUPPLIED IDENTIFIERS ALONE.
+                </div>
+                <div class="mission-rewards panel-retro" style="margin: 1.5rem 0; text-align: center;">
+                    <div class="reward-item">
+                        <span class="reward-label">MISSION XP AWARD:</span>
+                        <span class="reward-value" id="missionXPAward">500</span>
+                    </div>
+                    <div class="reward-item">
+                        <span class="reward-label">OPERATOR RANK:</span>
+                        <span class="reward-value" id="missionRank">SCRIPT KIDDIE → </span>
+                    </div>
+                </div>
+                <button class="btn-retro" style="margin-top:1.25rem" onclick="window.location.href='/labs'">RETURN TO MISSION CONTROL</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+const state = { user: null, currentRecordId: null, crossOwner: false, secureCompared: false, completed: false };
+const requestForm = document.getElementById('recordLookupForm');
+
+function logRequest(method, path, status, body = '') {
+    const line = document.createElement('div');
+    line.className = 'inspector-entry';
+    line.textContent = `${method} ${path} → ${status}${body ? ` | ${body}` : ''}`;
+    document.getElementById('inspBody').appendChild(line);
+    document.getElementById('inspCount').textContent = `(${document.getElementById('inspBody').children.length})`;
+}
+
+function showView(name) {
+    document.querySelectorAll('.medi-view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`));
+    document.querySelectorAll('.medi-sidebar .nav-item').forEach(button => button.classList.toggle('active', button.dataset.view === name));
+}
+
+function toggleInspector() {
+    const body = document.getElementById('inspBody');
+    body.classList.toggle('open');
+    document.getElementById('inspToggle').textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+function clearInspector() {
+    document.getElementById('inspBody').replaceChildren();
+    document.getElementById('inspCount').textContent = '(0)';
+}
+
+function updateHeaderStatus() {
+    const badge = document.getElementById('labBadge');
+    badge.textContent = state.completed ? 'COMPLETED' : 'IN PROGRESS';
+    badge.classList.toggle('badge-completed', state.completed);
+    badge.classList.toggle('badge-not-started', !state.completed);
+}
+
+function revealNextHint() {
+    const panel = document.getElementById('hintsPanel');
+    panel.classList.remove('hidden');
+    const hint = document.createElement('p');
+    hint.textContent = 'Use a record ID owned by another synthetic user, then compare the same request against the secure endpoint.';
+    document.getElementById('hintsContainer').replaceChildren(hint);
+}
+
+async function startLab() {
+    const me = await fetch('/auth/me', { credentials: 'include' });
+    if (!me.ok) { window.location.href = '/login?next=/bola_lab.html'; return; }
+    state.user = await me.json();
+    document.getElementById('introSection').style.display = 'none';
+    document.getElementById('mediApp').style.display = 'block';
+    document.getElementById('mediUserName').textContent = state.user.username;
+    document.getElementById('mediSidebar').style.display = 'flex';
+    document.getElementById('mediLoginPrompt').style.display = 'none';
+    document.getElementById('mvWelcome').textContent = `WELCOME, ${state.user.username.toUpperCase()}`;
+    await fetch('/labs/bola/status', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() }, body: JSON.stringify({ status: 'in_progress' }) });
+    await loadRecords();
+    showView('dashboard');
+}
+
+async function loadRecords() {
+    const response = await fetch('/records', { credentials: 'include' });
+    const records = await response.json();
+    logRequest('GET', '/records', response.status);
+    if (!response.ok) throw new Error(records.detail || 'Unable to load records');
+    document.getElementById('mvRecordCount').textContent = records.length;
+    const body = document.getElementById('mvRecordsBody');
+    body.replaceChildren();
+    records.forEach(record => {
+        const row = document.createElement('tr');
+        for (const value of [record.id, record.title, record.owner]) {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
         }
-        
-        // Form submit: Access record
-        document.getElementById('bolaForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('userUsername').value || 'alice';
-            const recordId = document.getElementById('targetRecordId').value || 1;
-            
-            if (!login(username)) return;
-            
-            // In a real vulnerable lab, this API would fail to check ownership
-            // Here we simulate the behavior
-            const isAlice = username === 'alice';
-            const isBobRecord = recordId >= 3;
-            
-            const responseDiv = document.getElementById('responseOutput');
-            responseDiv.style.display = 'block';
-            
-            if (isAlice && isBobRecord) {
-                // Vulnerable: Alice can access Bob's record (BOLA)
-                responseDiv.innerHTML = `<strong>VULNERABLE:</strong> Alice accessed record ${recordId} (Bob's record). ` +
-                    `No ownership validation was performed. Data exposed: ` +
-                    `<code>${isBobRecord === 3 ? 'Patient notes' : 'Investment portfolio'}</code>`;
-                responseDiv.style.background = '#fed7aa';
-                responseDiv.style.borderLeft = '4px solid #f6ad55';
-                
-                // Mark BOLA as completed for demo
-                document.querySelector('.lab-card.bola .status-badge')
-                    .textContent = 'Completed (demo)';
-                document.querySelector('.lab-card.bola .status-badge')
-                    .className = 'status-badge status-completed btn btn-completed';
-            } else {
-                // Secure: Access denied or own record
-                responseDiv.innerHTML = `<strong>SECURE:</strong> Access denied or own record retrieved. ` +
-                    `Ownership validation prevented unauthorized access.`;
-                responseDiv.style.background = '#d1fae5';
-                responseDiv.style.borderLeft = '4px solid #059669';
-            }
+        const action = document.createElement('td');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'INSPECT';
+        button.addEventListener('click', () => inspectRecord(record.id));
+        action.appendChild(button);
+        row.appendChild(action);
+        body.appendChild(row);
+    });
+}
+
+async function inspectRecord(recordId) {
+    const response = await fetch(`/records/${recordId}`, { credentials: 'include' });
+    const record = await response.json();
+    logRequest('GET', `/records/${recordId}`, response.status, response.ok ? `owner=${record.owner}` : record.detail);
+    document.getElementById('recordLookupStatus').textContent = response.ok ? `Record belongs to ${record.owner}.` : (record.detail || 'Request failed');
+    if (!response.ok) return;
+    state.currentRecordId = recordId;
+    state.crossOwner = record.owner !== state.user.username;
+    state.secureCompared = false;
+    document.getElementById('mvDetailTitle').textContent = record.title;
+    const details = document.getElementById('mvDetailFields');
+    details.replaceChildren();
+    for (const [label, value] of [['OWNER', record.owner], ['CONTENT', record.content]]) {
+        const line = document.createElement('p');
+        line.textContent = `${label}: ${value || ''}`;
+        details.appendChild(line);
+    }
+    document.getElementById('headerCompleteBtn').style.display = state.crossOwner ? 'inline-block' : 'none';
+    showView('record-detail');
+}
+
+async function refetchSecure() {
+    if (!state.currentRecordId) return;
+    const response = await fetch(`/secure/records/${state.currentRecordId}`, { credentials: 'include' });
+    const body = await response.json();
+    logRequest('GET', `/secure/records/${state.currentRecordId}`, response.status);
+    state.secureCompared = response.status === 404 && state.crossOwner;
+    document.getElementById('recordLookupStatus').textContent = state.secureCompared
+        ? 'SECURE COMPARISON: access denied for a record owned by another user.'
+        : `SECURE COMPARISON: HTTP ${response.status}${body.detail ? ` — ${body.detail}` : ''}`;
+}
+
+requestForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const id = Number(document.getElementById('recordLookupId').value);
+    if (!Number.isInteger(id) || id < 1) return;
+    await inspectRecord(id);
+});
+
+async function handleLogout() {
+    await fetch('/auth/logout', { method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': csrfToken() } });
+    window.location.href = '/login';
+}
+
+document.querySelectorAll('.medi-sidebar .nav-item').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
+document.querySelectorAll('.medi-sidebar .nav-item[data-view="records"]').forEach(button => button.addEventListener('click', () => loadRecords()));
+document.getElementById('inspToggle').addEventListener('click', toggleInspector);
+startLab();
+
+async function attemptCompletion() {
+    if (!state.user || !state.currentRecordId || !state.crossOwner || !state.secureCompared) {
+        alert('Access a different user\'s record and confirm that the secure comparison denies access first.');
+        return;
+    }
+    const btn = document.getElementById('headerCompleteBtn');
+    btn.disabled = true;
+    btn.textContent = 'VERIFYING…';
+
+    try {
+        const res = await fetch('/labs/bola/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+            credentials: 'include',
+            body: JSON.stringify({ labId: 'bola', record_id: state.currentRecordId })
         });
-        
-        // Form submit: API test
-        document.getElementById('apiForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const endpoint = document.getElementById('endpointSelect').value;
-            const user = document.getElementById('userSelect').value;
-            
-            // Simple simulation - show what would happen
-            const responseDiv = document.getElementById('responseOutput');
-            responseDiv.style.display = 'block';
-            
-            if (user === 'alice' && endpoint.includes('3') || endpoint.includes('4')) {
-                responseDiv.innerHTML = `<strong>VULNERABLE:</strong> Alice accessing Bob's record ${endpoint}. ` +
-                    `BOLA vulnerability: no ownership check. ` +
-                    `Record data would be exposed in a vulnerable implementation.`;
-            } else if (user === 'admin' || endpoint.includes('1') || endpoint.includes('2')) {
-                responseDiv.innerHTML = `<strong>SECURE/OK:</strong> Appropriate access. ` +
-                    `${user} can access record ${endpoint.replace('/records/', '')}.`;
-            } else {
-                responseDiv.innerHTML = `<strong>ACCESS DENIED:</strong> Unauthorized access attempt blocked.`;
-            }
-        });
-    </script>
-</body>
-</html>
+        const result = await res.json();
+
+        if (result.verified) {
+            state.completed = true;
+            document.getElementById('completionSection').classList.add('visible');
+            document.getElementById('headerCompleteBtn').textContent = 'MISSION ACCOMPLISHED';
+            document.getElementById('headerCompleteBtn').disabled = true;
+            updateHeaderStatus();
+
+            // Award XP for mission completion
+            await fetch('/api/xp/award', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken()
+                },
+                body: JSON.stringify({
+                    source: 'lab_completion:bola',
+                    xp_amount: 500,
+                    description: 'Successfully completed DATA BREACH mission'
+                })
+            });
+
+            // Check for achievements
+            await fetch('/api/achievements/check', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken()
+                }
+            });
+
+            // Notify mission control of completion
+            window.dispatchEvent(new CustomEvent('missionCompleted', {
+                detail: { missionId: 'bola' }
+            }));
+
+        } else {
+            // Handle failure
+            btn.disabled = false;
+            btn.textContent = 'MISSION COMPLETE';
+            alert('MISSION OBJECTIVES NOT MET. REVIEW INTELLIGENCE AND RETRY.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        btn.disabled = false;
+        btn.textContent = 'MISSION COMPLETE';
+        alert('SYSTEM ERROR. PLEASE RETRY MISSION.');
+    }
+}
+</script>
+{% endblock %}

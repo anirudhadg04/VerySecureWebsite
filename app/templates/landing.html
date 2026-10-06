@@ -1,72 +1,103 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>VerySecureWebsite - Security Lab</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        :root {
-            --primary: #1a1a2e;
-            --secondary: #16213e;
-            --accent: #e94560;
-            --success: #4facfe;
-            --muted: #7f8c8d;
-            --bg: #f8f9fa;
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: #333;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .landing-card {
-            background: white;
-            border-radius: 8px;
-            padding: 3rem;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            max-width: 400px; width: 90%;
-        }
-        
-        .landing-card h1 {
-            margin-bottom: 1rem; color: var(--primary);
-            font-size: 2rem;
-        }
-        
-        .landing-card p {
-            color: var(--muted);
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-        
-        .btn-landing {
-            display: inline-block; padding: 0.875rem 1.75rem;
-            background: var(--accent); color: white; text-decoration: none;
-            border-radius: 4px; font-weight: 500; font-size: 1rem;
-            transition: background 0.2s;
-        }
-        
-        .btn-landing:hover { background: #ff5b70; }
-        
-        /* Remove features section for simplified landing page */
-        .features {
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="landing-card">
-        <h1>VerySecureWebsite</h1>
-        <p>AI-assisted application security research and vulnerability lab.</p>
-        <p>An intentionally vulnerable web application for learning application security testing.</p>
-        <a href="/labs" class="btn-landing">Enter Security Labs</a>
+{% extends "base.html" %}
+
+{% block title %}{{ app.APP_NAME }} - Boot Sequence{% endblock %}
+
+{% block content %}
+<div class="landing-container panel-retro" style="max-width: 800px; margin: 0 auto; padding: 2rem; text-align: center;">
+    <!-- Logo and Title -->
+    <div class="logo-section" style="margin-bottom: 2rem;">
+        <h1 style="font-family: var(--font-pixel); font-size: 2.5rem; color: var(--accent-primary); margin-bottom: 0.5rem; letter-spacing: 2px;">
+            VERYSECUREWEBSITE
+        </h1>
+        <p style="font-family: var(--font-ui); font-size: 1.25rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 1.5rem; line-height: 1.6;">
+            CYBERSECURITY TRAINING PLATFORM
+        </p>
     </div>
-</body>
-</html>
+
+    <!-- Mission Brief -->
+    <div class="mission-brief" style="margin-bottom: 2.5rem; line-height: 1.8; color: var(--text-primary); font-size: 1.1rem; max-width: 700px; margin-left: auto; margin-right: auto;">
+        Break systems.<br>
+        Understand vulnerabilities.<br>
+        Learn to secure them.
+    </div>
+
+    <!-- Primary Action -->
+    <div class="primary-action" style="margin-bottom: 2rem;">
+        {% if current_user %}
+        <a href="/labs" class="btn-retro" style="font-size: 1.25rem; padding: 1rem 2rem;">
+            ENTER NETWORK
+        </a>
+        {% else %}
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+            <a href="/login" class="btn-retro" style="font-size: 1.25rem; padding: 1rem 2rem;">
+                OPERATOR LOGIN
+            </a>
+            <a href="/register" class="btn-retro-secondary" style="font-size: 1.1rem; padding: 0.75rem 1.5rem;">
+                CREATE OPERATOR PROFILE
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Mission Overview -->
+    <div class="mission-overview" style="text-align: left; max-width: 600px; margin: 0 auto 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+        <a href="/bola_lab.html" class="mission-card panel-retro" style="padding: 1.5rem; text-align: center;">
+            <h3 style="font-family: var(--font-pixel); font-size: 1rem; color: var(--accent-primary); margin-bottom: 0.5rem;">MISSION_001</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">BOLA/IDOR</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Object Level Authorization</p>
+        </a>
+        <a href="/bfla_lab.html" class="mission-card panel-retro" style="padding: 1.5rem; text-align: center;">
+            <h3 style="font-family: var(--font-pixel); font-size: 1rem; color: var(--accent-primary); margin-bottom: 0.5rem;">MISSION_002</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">BFLA</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Function Level Authorization</p>
+        </a>
+        <a href="/xss_lab.html" class="mission-card panel-retro" style="padding: 1.5rem; text-align: center;">
+            <h3 style="font-family: var(--font-pixel); font-size: 1rem; color: var(--accent-primary); margin-bottom: 0.5rem;">MISSION_003</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">XSS</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Reflected Payload</p>
+        </a>
+    </div>
+
+    <!-- System Status (Subtle) -->
+    <div class="status-bar" style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-dim); font-size: 0.9rem; color: var(--text-muted);">
+        <div><span style="font-family: var(--font-mono);">ACTIVE OPERATORS:</span> <span id="activeOps">--</span></div>
+        <div><span style="font-family: var(--font-mono);">MISSIONS COMPLETED:</span> <span id="completedMissions">--</span></div>
+        <div><span style="font-family: var(--font-mono);">SYSTEM STATUS:</span> <span class="status-online" id="systemStatus">ONLINE</span></div>
+        <div><span style="font-family: var(--font-mono);">THREAT LEVEL:</span> <span id="threatLevel">GREEN</span></div>
+    </div>
+
+    <div class="footer-info" style="margin-top: 3rem; font-size: 0.875rem; color: var(--text-muted);">
+        <p>RETRO CYBERPUNK EDITION • VERSION {{ app.APP_VERSION }}</p>
+        <p>ALL SYSTEMS NOMINAL • MONITORING ACTIVE</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Update stats periodically (in a real app, this would come from API)
+    setInterval(() => {
+        // Simulate updating stats
+        const operators = Math.floor(Math.random() * 50) + 25;
+        const missions = Math.floor(Math.random() * 100);
+        document.getElementById('activeOps').textContent = operators;
+        document.getElementById('completedMissions').textContent = missions;
+
+        // Randomly change threat level occasionally
+        if (Math.random() < 0.1) {
+            const threatLevel = document.getElementById('threatLevel');
+            const levels = ['GREEN', 'YELLOW', 'RED'];
+            const currentIndex = levels.indexOf(threatLevel.textContent);
+            const newIndex = (currentIndex + Math.floor(Math.random() * 3)) % levels.length;
+            threatLevel.textContent = levels[newIndex];
+            threatLevel.className = `status-${levels[newIndex].toLowerCase()}`;
+        }
+    }, 5000);
+    
+    // Initial update
+    document.getElementById('activeOps').textContent = '42';
+    document.getElementById('completedMissions').textContent = '0';
+});
+</script>
+{% endblock %}

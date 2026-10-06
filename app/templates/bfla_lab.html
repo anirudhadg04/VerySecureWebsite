@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}VerySecureWebsite - BFLA Mission{% endblock %}
+
+{% block content %}
+<!-- Existing lab content with retro styling and XP integration -->
+<header class="lab-header panel-retro">
+    <div class="title-group">
+        <h1>MISSION: PRIVILEGE OVERRIDE</h1>
+        <span class="meta" id="labBadge" class="badge badge-not-started">NOT STARTED</span>
+    </div>
+    <div class="actions">
+        <button class="header-btn btn-retro-secondary" onclick="revealNextHint()">>_ HINT</button>
+    </div>
+</header>
+
+<div class="main">
+    <!-- Existing lab content remains -->
+    <!-- The existing BFLA lab content would go here -->
+    <!-- For brevity, I'm showing the structure with retro styling -->
+
+    <div class="container panel-retro">
+        <div class="lab-section panel-retro">
+            <h1>MISSION BRIEFING: BFLA</h1>
+            <p class="subtitle">Function Level Authorization Bypass</p>
+
+            <div class="notice panel-retro">
+                <strong>MISSION CLASSIFICATION:</strong> This mission is for authorized personnel only.
+                All accounts and data are synthetic. No real systems are affected.
+            </div>
+
+            <div class="safety panel-retro">
+                <strong>MISSION OBJECTIVE:</strong> Understand how inadequate function-level
+                authorization allows users to access administrative functions they are not entitled to.
+            </div>
+        </div>
+
+        <!-- The rest of the existing content would be wrapped in panel-retro classes -->
+        <!-- For brevity, I'll show key parts -->
+
+        <div class="lab-section panel-retro">
+            <h3>MISSION INTELLIGENCE</h3>
+            <button type="button" id="revealHintButton" class="btn btn-retro-secondary" onclick="revealNextHint()">>_ DECLASSIFY INTELLIGENCE</button>
+            <p id="hintStatus" role="status" aria-live="polite">INTELLIGENCE CLASSIFIED.</p>
+            <ol id="hintList" class="hidden"></ol>
+        </div>
+
+        <div class="lab-section panel-retro">
+            <h3>OPERATOR AUTHENTICATION</h3>
+            <div class="lab-form panel-retro">
+                <p class="mt-2">SIGN IN WITH A REGISTERED STANDARD OPERATOR ACCOUNT. ADMINISTRATOR ACCOUNTS CANNOT COMPLETE THIS MISSION.</p>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">OPERATOR ID</label>
+                        <input type="text" id="username" autocomplete="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">CLEARANCE CODE</label>
+                        <input type="password" id="password" autocomplete="current-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-retro">INITIATE SESSION</button>
+                </form>
+                <div id="loginStatus" class="mt-2" role="status" aria-live="polite"></div>
+            </div>
+        </div>
+
+        <!-- API Testing Section -->
+        <div class="lab-section panel-retro">
+            <h3>API TERMINAL ACCESS</h3>
+            <div class="api-test-section panel-retro">
+                <p>Probe the intentionally vulnerable operation, then compare it with the secured implementation.</p>
+                <button type="button" id="probeAdminButton" class="btn btn-retro">REQUEST ADMIN USER LIST</button>
+                <pre id="apiResult" role="status" aria-live="polite"></pre>
+            </div>
+        </div>
+
+        <!-- Mission Completion -->
+        <div class="lab-section panel-retro">
+            <h3>MISSION STATUS</h3>
+            <p>TO COMPLETE THIS MISSION, DEMONSTRATE THAT A PRIVILEGED OPERATION SUCCEEDS FOR A STANDARD OPERATOR, THEN COMPARE ITS RESULT WITH THE SECURE IMPLEMENTATION.</p>
+            <button type="button" id="completeLabBtn" class="btn btn-retro" disabled>DECLARE MISSION ACCOMPLISHED</button>
+            <div id="completionStatus"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<!-- Add XP awarding to the completeLab function -->
+<script>
+let currentUser = null;
+let vulnerableAccessSucceeded = false;
+let secureComparisonRejected = false;
+const completionStatus = document.getElementById('completionStatus');
+const apiResult = document.getElementById('apiResult');
+const completeButton = document.getElementById('completeLabBtn');
+function revealNextHint() {
+    document.getElementById('hintStatus').textContent = 'Compare /admin/users as a standard account with /secure/admin/users. The same function should be denied by the secured route.';
+}
+
+async function loadCurrentUser() {
+    const response = await fetch('/auth/me', { credentials: 'include' });
+    if (response.ok) currentUser = await response.json();
+    document.getElementById('loginStatus').textContent = currentUser
+        ? `SIGNED IN AS ${currentUser.username} (${currentUser.role.toUpperCase()})`
+        : 'SIGN IN TO RUN THE AUTHORIZATION COMPARISON.';
+}
+
+document.getElementById('loginForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const response = await fetch('/auth/login', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+        body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value })
+    });
+    const data = await response.json();
+    document.getElementById('loginStatus').textContent = response.ok ? `SIGNED IN AS ${data.username}` : (data.detail || 'SIGN IN FAILED');
+    if (response.ok) await loadCurrentUser();
+});
+
+document.getElementById('probeAdminButton').addEventListener('click', async () => {
+    await loadCurrentUser();
+    if (!currentUser) { apiResult.textContent = 'AUTHENTICATION REQUIRED'; return; }
+    const [vulnerable, secure] = await Promise.all([
+        fetch('/admin/users', { credentials: 'include' }),
+        fetch('/secure/admin/users', { credentials: 'include' })
+    ]);
+    vulnerableAccessSucceeded = vulnerable.ok;
+    secureComparisonRejected = secure.status === 403;
+    const users = vulnerable.ok ? await vulnerable.json() : [];
+    apiResult.textContent = `VULNERABLE ROUTE: HTTP ${vulnerable.status} (${users.length} users returned)\nSECURE ROUTE: HTTP ${secure.status}`;
+    completeButton.disabled = !(currentUser.role !== 'admin' && vulnerableAccessSucceeded && secureComparisonRejected);
+});
+
+completeButton.addEventListener('click', async () => {
+    if (!currentUser || currentUser.role === 'admin' || !vulnerableAccessSucceeded || !secureComparisonRejected) return;
+    try {
+        const response = await fetch('/labs/bfla/complete', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+            body: JSON.stringify({ evidence: { action: 'admin_access_as_user' } })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Completion request failed');
+        if (!result.verified) { completionStatus.textContent = `MISSION OBJECTIVES NOT MET: ${result.reason}`; return; }
+        completionStatus.textContent = 'MISSION ACCOMPLISHED!';
+        window.dispatchEvent(new CustomEvent('missionCompleted', { detail: { missionId: 'bfla' } }));
+        await fetch('/api/xp/award', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() }, body: JSON.stringify({ source: 'lab_completion:bfla' }) });
+        await fetch('/api/achievements/check', { method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': csrfToken() } });
+    } catch (error) { completionStatus.textContent = `SYSTEM ERROR: ${error.message}`; }
+});
+
+loadCurrentUser();
+</script>
+{% endblock %}

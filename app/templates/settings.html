@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app.APP_NAME }} - Settings{% endblock %}
+
+{% block content %}
+<div class="settings-page panel-retro">
+    <header class="settings-header">
+        <h1>OPERATOR SETTINGS</h1>
+        <p class="tagline">CONFIGURE YOUR INTERFACE AND EXPERIENCE</p>
+        <div class="settings-actions">
+            <a href="/operator/profile" class="btn-retro-secondary">RETURN TO HIDEOUT</a>
+        </div>
+    </header>
+
+    <div class="settings-content">
+        <div class="settings-section panel-retro">
+            <h2>INTERFACE CONFIGURATION</h2>
+
+            <div class="setting-group">
+                <h3>VISUAL EFFECTS</h3>
+                <div class="setting-item">
+                    <label class="setting-label" for="settingBootSequence">BOOT SEQUENCE</label>
+                    <div class="setting-description">SHOW THE SYSTEM BOOT SEQUENCE ON INITIAL LOGIN</div>
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="settingBootSequence">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label" for="settingScanlines">CRT SCANLINES</label>
+                    <div class="setting-description">ENABLE THE CLASSIC MONITOR SCANLINE EFFECT</div>
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="settingScanlines">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label" for="settingReducedMotion">REDUCED MOTION</label>
+                    <div class="setting-description">MINIMIZE ANIMATIONS FOR ACCESSIBILITY</div>
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="settingReducedMotion">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>DISPLAY PREFERENCES</h3>
+                <div class="setting-item">
+                    <label class="setting-label">THEME ACCENT</label>
+                    <div class="setting-description">SELECT YOUR PREFERRED INTERFACE ACCENT COLOR</div>
+                    <select id="settingThemeAccent">
+                        <option value="phosphor">PHOSPHOR GREEN</option>
+                        <option value="cyan">CYAN</option>
+                        <option value="amber">AMBER</option>
+                        <option value="magenta">MAGENTA</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">TERMINAL FONT</label>
+                    <div class="setting-description">SELECT THE FONT USED IN TERMINAL INTERFACES</div>
+                    <select id="settingTerminalFont">
+                        <option value="vt323">VT323 (CLASSIC TERMINAL)</option>
+                        <option value="share_tech">SHARE TECH MONO</option>
+                        <option value="orbitron">ORBITRON (MODERN)</option>
+                        <option value="press_start">PRESS START 2E (RETRO ARCADE)</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">INTERFACE BRIGHTNESS</label>
+                    <div class="setting-description">ADJUST THE OVERALL BRIGHTNESS OF THE INTERFACE</div>
+                    <div class="slider-container">
+                        <input type="range" id="settingBrightness" min="0" max="100" value="70">
+                        <span class="slider-value" id="brightnessValue">70%</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label">INTERFACE CONTRAST</label>
+                    <div class="setting-description">ADJUST THE CONTRAST OF TEXT AND ELEMENTS</div>
+                    <div class="slider-container">
+                        <input type="range" id="settingContrast" min="0" max="100" value="80">
+                        <span class="slider-value" id="contrastValue">80%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section panel-retro">
+            <h2>AUDIO CONFIGURATION</h2>
+
+            <div class="setting-group">
+                <h3>AUDIO PREFERENCES</h3>
+                <div class="setting-item">
+                    <label class="setting-label">MASTER VOLUME</label>
+                    <div class="setting-description">CONTROL THE OVERALL AUDIO OUTPUT LEVEL</div>
+                    <div class="slider-container">
+                        <input type="range" id="settingVolume" min="0" max="100" value="50">
+                        <span class="slider-value" id="volumeValue">50%</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label" for="settingSystemSounds">SYSTEM SOUNDS</label>
+                    <div class="setting-description">ENABLE INTERFACE NOTIFICATION AND FEEDBACK SOUNDS</div>
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="settingSystemSounds">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label" for="settingMusic">BACKGROUND MUSIC</label>
+                    <div class="setting-description">ENABLE AMBIENT TERMINAL MUSIC DURING OPERATIONS</div>
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="settingMusic">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section panel-retro">
+            <h2>ADVANCED CONFIGURATION</h2>
+
+            <div class="setting-group">
+                <h3>DATA & PRIVACY</h3>
+                <div class="setting-item">
+                    <label class="setting-label">OPERATOR DATA RETENTION</label>
+                    <div class="setting-description">CONTROL HOW LONG MISSION DATA IS STORED</div>
+                    <select id="settingDataRetention">
+                        <option value="30">30 DAYS</option>
+                        <option value="90">90 DAYS</option>
+                        <option value="365">1 YEAR</option>
+                        <option value="-1">INDEFINITE</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label class="setting-label" for="settingIntelligenceSharing">MISSION INTELLIGENCE SHARING</label>
+                    <div class="setting-description">ALLOW ANONYMIZED MISSION DATA TO BE USED FOR SYSTEM IMPROVEMENT</div>
+                    <label class="setting-toggle">
+                        <input type="checkbox" id="settingIntelligenceSharing">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-actions-panel panel-retro" style="margin-top: 2rem; text-align: center;">
+            <button class="btn-retro" id="saveSettingsBtn">APPLY CONFIGURATION</button>
+            <button class="btn-retro btn-retro-secondary" id="resetSettingsBtn">RESET TO DEFAULT</button>
+            <button class="btn-retro btn-retro-secondary" id="exportSettingsBtn">EXPORT CONFIGURATION</button>
+        </div>
+    </div>
+
+    <footer class="settings-footer">
+        <div class="footer-info">
+            <span>RETRO CYBERPUNK EDITION • VERSION {{ app.APP_VERSION }}</span>
+            <span class="footer-divider">|</span>
+            <span>LAST CONFIGURATION UPDATE: <span id="lastUpdated">--</span></span>
+        </div>
+    </footer>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Settings controls
+    const bootSequenceCheckbox = document.getElementById('settingBootSequence');
+    const scanlinesCheckbox = document.getElementById('settingScanlines');
+    const reducedMotionCheckbox = document.getElementById('settingReducedMotion');
+    const themeAccentSelect = document.getElementById('settingThemeAccent');
+    const terminalFontSelect = document.getElementById('settingTerminalFont');
+    const brightnessSlider = document.getElementById('settingBrightness');
+    const brightnessValueSpan = document.getElementById('brightnessValue');
+    const contrastSlider = document.getElementById('settingContrast');
+    const contrastValueSpan = document.getElementById('contrastValue');
+    const volumeSlider = document.getElementById('settingVolume');
+    const volumeValueSpan = document.getElementById('volumeValue');
+    const systemSoundsCheckbox = document.getElementById('settingSystemSounds');
+    const musicCheckbox = document.getElementById('settingMusic');
+    const dataRetentionSelect = document.getElementById('settingDataRetention');
+    const intelligenceSharingCheckbox = document.getElementById('settingIntelligenceSharing');
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    const resetSettingsBtn = document.getElementById('resetSettingsBtn');
+    const exportSettingsBtn = document.getElementById('exportSettingsBtn');
+    const lastUpdatedSpan = document.getElementById('lastUpdated');
+
+    // Update value displays
+    brightnessSlider.addEventListener('input', () => {
+        brightnessValueSpan.textContent = `${brightnessSlider.value}%`;
+    });
+
+    contrastSlider.addEventListener('input', () => {
+        contrastValueSpan.textContent = `${contrastSlider.value}%`;
+    });
+
+    volumeSlider.addEventListener('input', () => {
+        volumeValueSpan.textContent = `${volumeSlider.value}%`;
+    });
+
+    // Load current settings
+    async function loadSettings() {
+        try {
+            const response = await fetch('/api/user/settings', {
+                credentials: 'include'
+            });
+            const settings = await response.json();
+
+            bootSequenceCheckbox.checked = settings.boot_sequence_enabled ?? true;
+            scanlinesCheckbox.checked = settings.crt_scanlines ?? true;
+            reducedMotionCheckbox.checked = settings.reduced_motion || false;
+            themeAccentSelect.value = settings.theme_accent || 'phosphor';
+            terminalFontSelect.value = settings.terminal_font || 'vt323';
+            brightnessSlider.value = settings.brightness ?? 70;
+            contrastSlider.value = settings.contrast ?? 80;
+            volumeSlider.value = settings.volume ?? 50;
+            systemSoundsCheckbox.checked = settings.sound_enabled || false;
+            musicCheckbox.checked = settings.music_enabled || false;
+            dataRetentionSelect.value = settings.data_retention || '365';
+            intelligenceSharingCheckbox.checked = settings.intelligence_sharing || false;
+
+            brightnessValueSpan.textContent = `${brightnessSlider.value}%`;
+            contrastValueSpan.textContent = `${contrastSlider.value}%`;
+            volumeValueSpan.textContent = `${volumeSlider.value}%`;
+
+            // Update last updated timestamp
+            lastUpdatedSpan.textContent = new Date().toLocaleString();
+            applySettings(settings);
+
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            showToast('Failed to load settings', 'error');
+        }
+    }
+
+    // Save settings
+    saveSettingsBtn.addEventListener('click', async () => {
+        const settings = {
+            boot_sequence_enabled: bootSequenceCheckbox.checked,
+            crt_scanlines: scanlinesCheckbox.checked,
+            reduced_motion: reducedMotionCheckbox.checked,
+            theme_accent: themeAccentSelect.value,
+            terminal_font: terminalFontSelect.value,
+            brightness: parseInt(brightnessSlider.value),
+            contrast: parseInt(contrastSlider.value),
+            volume: parseInt(volumeSlider.value),
+            sound_enabled: systemSoundsCheckbox.checked,
+            music_enabled: musicCheckbox.checked,
+            data_retention: dataRetentionSelect.value,
+            intelligence_sharing: intelligenceSharingCheckbox.checked
+        };
+
+        try {
+            const response = await fetch('/api/user/settings', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken()
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (response.ok) {
+                showToast('Settings applied successfully', 'success');
+                applySettings(settings);
+                lastUpdatedSpan.textContent = new Date().toLocaleString();
+            } else {
+                showToast('Failed to apply settings', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            showToast('Error applying settings', 'error');
+        }
+    });
+
+    // Reset settings
+    resetSettingsBtn.addEventListener('click', () => {
+        if (confirm('Reset all settings to default values?')) {
+            bootSequenceCheckbox.checked = true;
+            scanlinesCheckbox.checked = true;
+            reducedMotionCheckbox.checked = false;
+            themeAccentSelect.value = 'phosphor';
+            terminalFontSelect.value = 'vt323';
+            brightnessSlider.value = 70;
+            contrastSlider.value = 80;
+            volumeSlider.value = 50;
+            systemSoundsCheckbox.checked = false;
+            musicCheckbox.checked = false;
+            dataRetentionSelect.value = '365';
+            intelligenceSharingCheckbox.checked = false;
+
+            brightnessValueSpan.textContent = '70%';
+            contrastValueSpan.textContent = '80%';
+            volumeValueSpan.textContent = '50%';
+
+            // Apply reset
+            saveSettingsBtn.click();
+        }
+    });
+
+    // Export the saved settings as a JSON download.
+    exportSettingsBtn.addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/user/settings', { credentials: 'include' });
+            if (!response.ok) throw new Error('Settings could not be loaded');
+            const blob = new Blob([JSON.stringify(await response.json(), null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'verysecurewebsite-settings.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            showToast('Failed to export settings', 'error');
+        }
+    });
+
+    // Apply settings function
+    function applySettings(settings) {
+        const root = document.documentElement;
+        const accents = {phosphor: ['#00ff41', '#00cc33'], cyan: ['#00ffff', '#00cccc'], amber: ['#ffbf00', '#cc9900'], magenta: ['#ff00ff', '#cc00cc']};
+        const fonts = {vt323: "'VT323', monospace", share_tech: "'Share Tech Mono', monospace", orbitron: "'Orbitron', sans-serif", press_start: "'Press Start 2E', monospace"};
+        const accent = accents[settings.theme_accent];
+        if (accent) {
+            root.style.setProperty('--accent-primary', accent[0]);
+            root.style.setProperty('--accent-primary-dim', accent[1]);
+        }
+        if (fonts[settings.terminal_font]) root.style.setProperty('--font-mono', fonts[settings.terminal_font]);
+        root.style.setProperty('--interface-brightness', `${settings.brightness ?? 70}%`);
+        root.style.setProperty('--interface-contrast', `${(settings.contrast ?? 80) + 50}%`);
+        root.classList.toggle('reduced-motion', Boolean(settings.reduced_motion));
+        root.classList.toggle('scanlines-disabled', !settings.crt_scanlines);
+        const boot = document.getElementById('bootSequence');
+        if (boot && !settings.boot_sequence_enabled) boot.remove();
+    }
+
+    // Initialize
+    loadSettings();
+
+    // Update clock in footer
+    function updateClock() {
+        // No clock in settings footer for now
+    }
+});
+</script>
+{% endblock %}

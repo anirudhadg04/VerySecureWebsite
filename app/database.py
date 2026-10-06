@@ -9,8 +9,8 @@ from .config import settings
 
 # SQLite engine - file-based database for the lab
 engine = create_engine(
-    f"sqlite:///{settings.APP_NAME.lower().replace(' ', '_')}.db",
-    connect_args={"check_same_thread": False},
+    settings.DATABASE_URL,
+    connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {},
     echo=False,  # Set to True for SQL debugging
 )
 

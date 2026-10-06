@@ -1,0 +1,704 @@
+"""Main FastAPI application for the VerySecureWebsite security lab.
+
+Entry point: uvicorn app.main:app
+Configurable to run in vulnerable or secured mode per lab module.
+"""
+
+from fastapi import FastAPI, Depends, HTTPException, Request, Response
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+import uvicorn
+
+from .database import get_db, engine, SessionLocal
+from .models import User, Record, AuditLog, OperatorProfile, Achievement, DailyContract, UserSettings, XPAwardLog, calculate_level, calculate_xp_for_level, get_rank_for_level, ACHIEVEMENTS
+from .config import settings
+
+# Create all tables on import (for lab simplicity)
+from . import init_db  # noqa: F401  intentional import for table creation
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="VerySecureWebsite - AI-assisted application security research lab",
+)
+
+# Mount static files and templates
+app.mount("/static", StaticFiles(directory="app/templates/static"), name="static")
+templates = Jinja2Templates(directory="app/templates")
+
+# HTTP bearer for token auth (lab use)
+security = HTTPBearer(auto_error=False)
+
+
+# ────────────────────────────────────────────────────────────────────
+# Helper: Password verification
+# ──────────────────────────────────────────────────────────────────
+def verify_password(plaintext: str, hashed: str) -> bool:
+    from bcrypt import checkpw
+    return checkpw(plaintext.encode("utf-8"), hashed.encode("utf-8"))
+
+
+# ────────────────────────────────────────────────────────────────────
+# Dependency: Get current user from session cookie
+# ──────────────────────────────────────────────────────────────────
+def get_current_user(
+    request: Request,
+    db=Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Extract user from request. Supports session cookie or bearer token.
+
+    In the vulnerable lab, this may have weaknesses.
+    In the secured lab, this enforces proper validation.
+    """
+    # Try to get user from session (cookie-based)
+    session_cookie = request.cookies.get("session_id")
+    
+    user = None
+    if session_cookie:
+        user = db.query(User).filter(User.username == session_cookie.split(":")[0] if ":" in session_cookie else None).first()
+    
+    # Fall back to bearer token if no session
+    if not user and credentials:
+        # In a real app, validate JWT; in the lab, we use simple username check
+        user = db.query(User).filter(User.username == credentials.credentials).first()
+    
+    return user
+
+
+# Authentication models
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+# ────────────────────────────────────────────────────────────────────
+# Authentication Routes
+# ────────────────────────────────────────────────────────────────────
+@app.post("/auth/register")
+def register(
+    register_data: RegisterRequest,
+    db=Depends(get_db),
+):
+    """Register a new user account.
+
+    Passwords are hashed with bcrypt. Never stored in plaintext.
+    """
+    from .models import User  # ensure import
+    
+    # Check for existing user
+    if db.query(User).filter((User.username == register_data.username) | (User.email == register_data.email)).first():
+        raise HTTPException(status_code=400, detail="Username or email already registered")
+    
+    # Hash password with bcrypt
+    import bcrypt
+    password_hash = bcrypt.hashpw(register_data.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    
+    # Determine role based on username (lab convention)
+    role = "admin" if register_data.username == "admin" else "user"
+    
+    user = User(
+        username=register_data.username,
+        email=register_data.email,
+        password_hash=password_hash,
+        role=role,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    return {"message": f"User {register_data.username} registered successfully", "user_id": user.id}
+
+
+@app.post("/auth/login")
+def login(
+    login_data: LoginRequest,
+    response: Response,
+    db=Depends(get_db),
+):
+    """Login and set session cookie.
+
+    Vulnerable lab: minimal session validation, no rate limiting.
+    Secured lab: proper credential verification, rate limiting.
+    """
+    user = db.query(User).filter(User.username == login_data.username).first()
+    
+    if not user or not verify_password(login_data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Set session cookie (configurable security settings)
+    # Format: username:timestamp for simple lookup
+    import time
+    session_value = f"{user.username}:{int(time.time())}"
+    response.set_cookie(
+        key="session_id",
+        value=session_value,
+        httponly=settings.COOKIE_HTTP_ONLY,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        path="/",
+    )
+    
+    return {"message": f"Logged in as {user.username}", "user_role": user.role, "user_id": user.id}
+
+
+@app.post("/auth/logout")
+def logout(
+    response: Response,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Logout and invalidate session cookie.
+
+    Vulnerable lab: may not properly invalidate session.
+    Secured lab: invalidates server-side session and blacklists token.
+    """
+    # Clear the session cookie
+    response.delete_cookie(
+        key="session_id",
+        path="/",
+    )
+    
+    # Log logout action
+    try:
+        audit_log = AuditLog(
+            user_id=current_user.id if current_user else None,
+            action="logout",
+            path=request.url.path if request else "/logout",
+            success=True,
+        )
+        db.add(audit_log)
+        db.commit()
+    except:
+        pass
+    
+    return {"message": "Logged out successfully"}
+
+
+@app.get("/auth/me")
+def me(
+    current_user=Depends(get_current_user),
+):
+    """Return current user profile."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role,
+    }
+
+
+# ────────────────────────────────────────────────────────────────────
+# Record Routes (BOLA/IDOR target)
+# ────────────────────────────────────────────────────────────────────
+@app.get("/records", response_model=list)
+def list_records(
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """List all records.
+
+    Vulnerable version: No ownership validation - returns ALL records.
+    Secured version: Only returns records owned by the current user.
+    """
+    records = db.query(Record).all()
+    return [
+        {"id": r.id, "title": r.title, "content": r.content,
+         "owner": r.owner.username if r.owner else None}
+        for r in records
+    ]
+
+
+@app.post("/records")
+def create_record(
+    title: str,
+    content: str = "",
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Create a new record owned by the current user."""
+    from .models import Record
+    
+    record = Record(
+        title=title,
+        content=content,
+        owner_id=current_user.id,  # Always assign ownership to current user
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    
+    return {"id": record.id, "title": record.title, "content": record.content, "owner": current_user.username}
+
+
+@app.get("/records/{record_id}")
+def get_record(
+    record_id: int,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get a specific record.
+
+    Vulnerable version: No ownership check - BOLA/IDOR vulnerability.
+    Any authenticated user can access any record ID.
+    """
+    record = db.query(Record).filter(Record.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return {
+        "id": record.id,
+        "title": record.title,
+        "content": record.content,
+        "owner": record.owner.username if record.owner else None,
+    }
+
+
+@app.put("/records/{record_id}")
+def update_record(
+    record_id: int,
+    title: str = "",
+    content: str = "",
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Update a record.
+
+    Vulnerable version: No ownership validation - BOLA/IDOR.
+    """
+    record = db.query(Record).filter(Record.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    # Vulnerable: no ownership check
+    if title:
+        record.title = title
+    if content:
+        record.content = content
+    db.commit()
+    
+    return {"id": record.id, "title": record.title, "content": record.content}
+
+
+@app.delete("/records/{record_id}")
+def delete_record(
+    record_id: int,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Delete a record.
+
+    Vulnerable version: No ownership validation - BOLA/IDOR.
+    """
+    record = db.query(Record).filter(Record.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    # Vulnerable: no ownership check
+    db.delete(record)
+    db.commit()
+    
+    return {"detail": "Record deleted"}
+
+
+# ────────────────────────────────────────────────────────────────────
+# Admin Routes (BFLA target)
+# ────────────────────────────────────────────────────────────────────
+@app.get("/admin/users")
+def list_users(
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """List all users.
+
+    Vulnerable version: Regular users can access this endpoint (BFLA).
+    Secured version: Only users with role='admin' can access.
+    """
+    users = db.query(User).all()
+    return [
+        {"id": u.id, "username": u.username, "email": u.email, "role": u.role}
+        for u in users
+    ]
+
+
+@app.get("/admin/debug")
+def debug_info(
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Debug endpoint - vulnerable to information disclosure.
+
+    Returns server configuration and environment details.
+    Should be restricted to admin only.
+    """
+    # In a secured app, this would be admin-only
+    # Vulnerable: returns info to any authenticated user
+    return {
+        "app_name": settings.APP_NAME,
+        "app_version": settings.APP_VERSION,
+        "debug": settings.DEBUG,
+        "host": settings.HOST,
+        "port": settings.PORT,
+        "cookie_secure": settings.COOKIE_SECURE,
+        "cookie_http_only": settings.COOKIE_HTTP_ONLY,
+        "cookie_samesite": settings.COOKIE_SAMESITE,
+        "database_url": str(engine.url),
+    }
+
+
+# ────────────────────────────────────────────────────────────────────
+# Secure Record Routes (BOLA remediation)
+# ────────────────────────────────────────────────────────────────────
+@app.get("/secure/records")
+def secure_list_records(
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """List only records owned by the current user.
+
+    Secured version: Ownership validation enforced.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    records = db.query(Record).filter(Record.owner_id == current_user.id).all()
+    return records
+
+
+@app.get("/secure/records/{record_id}")
+def secure_get_record(
+    record_id: int,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get a specific record with ownership validation.
+
+    Secured version: Ownership check enforced.
+    Returns 404 if the record does not belong to the current user.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    record = db.query(Record).filter(
+        Record.id == record_id,
+        Record.owner_id == current_user.id
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return {
+        "id": record.id,
+        "title": record.title,
+        "content": record.content,
+        "owner": record.owner.username if record.owner else None,
+    }
+
+
+@app.put("/secure/records/{record_id}")
+def secure_update_record(
+    record_id: int,
+    title: str = "",
+    content: str = "",
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Update a record with ownership validation.
+
+    Secured version: Ownership check enforced.
+    Returns 404 if the record does not belong to the current user.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    record = db.query(Record).filter(
+        Record.id == record_id,
+        Record.owner_id == current_user.id
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    if title:
+        record.title = title
+    if content:
+        record.content = content
+    db.commit()
+
+    return {"id": record.id, "title": record.title, "content": record.content}
+
+
+@app.delete("/secure/records/{record_id}")
+def secure_delete_record(
+    record_id: int,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Delete a record with ownership validation.
+
+    Secured version: Ownership check enforced.
+    Returns 404 if the record does not belong to the current user.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    record = db.query(Record).filter(
+        Record.id == record_id,
+        Record.owner_id == current_user.id
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    db.delete(record)
+    db.commit()
+
+    return {"detail": "Record deleted"}
+
+
+# ────────────────────────────────────────────────────────────────────
+# Reflected XSS Lab Demo Endpoints (VUL-003 demonstration)
+# ────────────────────────────────────────────────────────────────────
+def escape_html(text: str) -> str:
+    """HTML-encode user input to prevent XSS (mirrors template escapeHtml)."""
+    return (text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#039;"))
+
+
+@app.get("/xss", response_class=HTMLResponse)
+def xss_demo_vulnerable(username: str = ""):
+    """Reflected XSS - vulnerable demo: raw reflection of user input.
+
+    Vulnerable version: user input is reflected into HTML without encoding,
+    so any script tags are executed by the browser.
+    """
+    body = (
+        f"<!DOCTYPE html><html><head><title>XSS Demo - VULNERABLE</title></head>"
+        f"<body><h1>Reflected XSS - VULNERABLE (no encoding)</h1>"
+        f"<p>Username reflected raw:</p>"
+        f"<div id='xss-output'>{username}</div>"
+        f"<script>document.getElementById('xss-proof-executed') = true;</script>"
+        f"</body></html>"
+    )
+    return body
+
+
+@app.get("/secure/xss", response_class=HTMLResponse)
+def xss_demo_secure(username: str = ""):
+    """Reflected XSS - secure demo: HTML-encoded reflection.
+
+    Secured version: user input is HTML-encoded before rendering, so script
+    tags are displayed as text and never executed.
+    """
+    escaped = escape_html(username)
+    body = (
+        f"<!DOCTYPE html><html><head><title>XSS Demo - SECURE</title></head>"
+        f"<body><h1>Reflected XSS - SECURE (HTML-encoded)</h1>"
+        f"<p>Username reflected with encoding:</p>"
+        f"<div id='xss-output'>{escaped}</div>"
+        f"<script>document.getElementById('xss-secure-rendered') = true;</script>"
+        f"</body></html>"
+    )
+    return body
+
+
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "service": settings.APP_NAME}
+
+
+@app.get("/api/records")
+def api_records(
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """API endpoint for records.
+
+    Vulnerable version: No access control.
+    Secured version: Requires authentication and returns only user's records.
+    """
+    records = db.query(Record).filter(Record.owner_id == current_user.id).all() if current_user else []
+    return [
+        {"id": r.id, "title": r.title, "owner": r.owner.username}
+        for r in records
+    ]
+
+
+# ────────────────────────────────────────────────────────────────────
+# Secure Admin Routes (BFLA remediation)
+# ────────────────────────────────────────────────────────────────────
+def require_admin(current_user=Depends(get_current_user)):
+    """Dependency that enforces admin role.
+
+    Raises 403 if the current user is not an administrator.
+    """
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Administrator privileges required")
+    return current_user
+
+
+@app.get("/secure/admin/users")
+def secure_list_users(
+    db=Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    """List all users - admin only.
+
+    Secured version: Role check enforced.
+    """
+    users = db.query(User).all()
+    return [
+        {"id": u.id, "username": u.username, "email": u.email, "role": u.role}
+        for u in users
+    ]
+
+
+@app.get("/secure/admin/debug")
+def secure_debug_info(
+    db=Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    """Debug endpoint - admin only.
+
+    Secured version: Role check enforced.
+    Returns minimal configuration without sensitive internal details.
+    """
+    return {
+        "app_name": settings.APP_NAME,
+        "app_version": settings.APP_VERSION,
+        "debug": settings.DEBUG,
+        "host": settings.HOST,
+        "port": settings.PORT,
+    }
+@app.get("/", response_class=HTMLResponse)
+def landing(request: Request):
+    """Landing page."""
+    return templates.TemplateResponse(request, "landing.html", {"request": request, "app": settings})
+
+
+@app.get("/labs", response_class=HTMLResponse)
+def labs_dashboard(request: Request):
+    """Lab dashboard showing available security labs."""
+    labs = [
+        {
+            "id": "bola",
+            "name": "BOLA/IDOR - Object Level Authorization",
+            "category": "Authorization",
+            "objective": "Demonstrate unauthorized access to another user's records",
+            "status": "not_started",
+        },
+        {
+            "id": "bfla",
+            "name": "BFLA - Function Level Authorization",
+            "category": "Authorization",
+            "objective": "Demonstrate regular user accessing admin functions",
+            "status": "not_started",
+        },
+        {
+            "id": "xss",
+            "name": "Reflected XSS - Cross Site Scripting",
+            "category": "Injection",
+            "objective": "Demonstrate reflected payload execution in browser",
+            "status": "not_started",
+        },
+    ]
+    return templates.TemplateResponse(request, "labs_dashboard.html", {"request": request, "labs": labs})
+
+
+# ────────────────────────────────────────────────────────────────────
+# Completion verification endpoint (server-side)
+# ────────────────────────────────────────────────────────────────────
+@app.post("/labs/{lab_id}/complete")
+def verify_lab_completion(
+    lab_id: str,
+    request: Request,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Server-side verification of lab completion conditions.
+
+    The frontend cannot mark a lab complete by itself.
+    This endpoint validates that the user actually demonstrated
+    the vulnerable behavior as intended.
+
+    Returns:
+        - verified: bool - whether completion was verified
+        - lab_id: the lab identifier
+        - verified_at: timestamp if verified
+    """
+    from .models import AuditLog
+    from datetime import datetime, timezone
+    
+    # Check that user is authenticated
+    if not current_user:
+        return {"verified": False, "lab_id": lab_id, "reason": "user_not_authenticated"}
+    
+    # Lab-specific completion verification
+    if lab_id == "bola":
+        # BOLA: Demonstrate accessing another user's record
+        # Check that the user accessed a record they don't own
+        accessed_record_id = request.json.get("record_id") if hasattr(request, 'json') else None
+        
+        # For now, verify by checking audit log for cross-user access
+        # In a full implementation, this would check the actual request history
+        cross_access = db.query(AuditLog).filter(
+            AuditLog.user_id != current_user.id,
+            AuditLog.action.like("%record%"),
+        ).first()
+        
+        verified = bool(cross_access)
+        
+    elif lab_id == "bfla":
+        # BFLA: Demonstrate regular user accessing admin function
+        # Check that regular user accessed /admin/users or similar
+        admin_access = db.query(AuditLog).filter(
+            AuditLog.user_id == current_user.id,
+            AuditLog.action == "admin_access",
+        ).first()
+        verified = bool(admin_access)
+        
+    elif lab_id == "xss":
+        # Reflected XSS: Demonstrate payload execution
+        # Check for XSS payload in audit log or request evidence
+        xss_payload = request.json.get("payload") if hasattr(request, 'json') else None
+        # For lab purposes, verify payload was submitted and logged
+        xss_log = db.query(AuditLog).filter(
+            AuditLog.action.like("%xss%"),
+        ).first()
+        verified = bool(xss_log and xss_payload)
+        
+    else:
+        verified = False
+    
+    if verified:
+        # Record the completion
+        audit_log = AuditLog(
+            user_id=current_user.id,
+            action=f"lab_completion:{lab_id}",
+            path=request.url.path if request else f"/labs/{lab_id}/complete",
+            success=True,
+        )
+        db.add(audit_log)
+        db.commit()
+    
+    return {
+        "verified": verified,
+        "lab_id": lab_id,
+        "verified_at": datetime.now(timezone.utc).isoformat() if verified else None,
+        "reason": "passed" if verified else "conditions_not_met",
+    }
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        app,
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG,
+    )

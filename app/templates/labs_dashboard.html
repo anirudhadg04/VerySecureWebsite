@@ -1,462 +1,445 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>VerySecureWebsite - Security Lab</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        :root {
-            --primary: #1a1a2e;
-            --secondary: #16213e;
-            --accent: #e94560;
-            --success: #4facfe;
-            --muted: #7f8c8d;
-            --bg: #f8f9fa;
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: #333;
-            min-height: 100vh;
-        }
-        
-        /* Modal overlay */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal-overlay.active { display: flex; }
-        
-        .modal {
-            background: white;
-            margin: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            width: 90%;
-            max-width: 420px;
-            animation: modalIn 0.3s cubic-bezier(0.16,1,0.3,1);
-        }
-        
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.9) translateY(-20px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        
-        .modal-header {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .modal-header h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--primary);
-        }
-        
-        .modal-header .close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            font-weight: bold;
-            cursor: pointer;
-            color: var(--muted);
-            padding: 0;
-            line-height: 1;
-        }
-        
-        .modal-header .close:hover { color: var(--accent); }
-        
-        .modal-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--accent), var(--success));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 1rem;
-            flex-shrink: 0;
-        }
-        
-        .modal-icon svg {
-            width: 24px;
-            height: 24px;
-            fill: white;
-        }
-        
-        .modal-body {
-            padding: 1.5rem;
-        }
-        
-        .modal-body p {
-            color: #555;
-            margin-bottom: 1.5rem;
-            font-size: 0.95rem;
-        }
-        
-        .modal-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-        }
-        
-        .btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #333;
-        }
-        
-        .btn-secondary:hover { background: #cbd5e0; }
-        
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-        
-        .btn-primary:hover { background: #ff5b70; }
-        
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-        
-        .btn-success:hover { background: #38bdf8; }
-        
-        /* Dashboard */
-        .dashboard {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        
-        .dashboard h1 {
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--primary);
-            color: var(--primary);
-        }
-        
-        .labs-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .lab-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .lab-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
-        
-        .lab-card.not-started { border-left: 4px solid #aaa; }
-        .lab-card.in-progress { border-left: 4px solid #f6ad55; }
-        .lab-card.completed { border-left: 4px solid var(--success); }
-        
-        .lab-card h3 { margin-bottom: 0.75rem; color: var(--primary); }
-        
-        .lab-card .category {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--muted);
-            margin-bottom: 0.5rem;
-        }
-        
-        .lab-card .objective {
-            font-size: 0.85rem;
-            color: #555;
-            line-height: 1.4;
-            margin-bottom: 1rem;
-        }
-        
-        .lab-card .status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .status-not-started {
-            background: #e2e8f0;
-            color: #7f8c8d;
-        }
-        
-        .status-in-progress {
-            background: #fed7aa;
-            color: #9a5c15;
-        }
-        
-        .status-completed {
-            background: #d1fae5;
-            color: #059669;
-        }
-        
-        /* Buttons for status */
-        .status-btn {
-            padding: 0.3rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            cursor: pointer;
-            border: 1px solid currentColor;
-        }
-        
-        .btn-not-started { background: #fff; color: #7f8c8d; border-color: #7f8c8d; }
-        .btn-in-progress { background: #fff; color: #f6ad55; border-color: #f6ad55; }
-        .btn-completed { background: #fff; color: var(--success); border-color: var(--success); cursor: default; }
-        
-        @media (max-width: 480px) {
-            .lab-card { padding: 1rem; }
-            .modal { margin: 1rem; }
-        }
-    </style>
-</head>
-<body>
-    <!-- Lab Completion Modal -->
-    <div class="modal-overlay" id="completionModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <div class="modal" role="document">
-            <div class="modal-header" id="modalHeader">
-                <div class="modal-icon" id="modalIcon">
-                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 7l10 5 10-5"/></svg>
-                </div>
-                <h2 id="modalTitle">Lab completed!</h2>
-                <button class="close" aria-label="Dismiss modal" onclick="hideCompletionModal()">×</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <p id="modalMessage">You have successfully completed this lab.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="hideCompletionModal()">Dismiss</button>
-                <button class="btn btn-primary" id="proceedBtn" style="display:none;">Proceed to next</button>
-            </div>
+{% extends "base.html" %}
+
+{% block title %}{{ app.APP_NAME }} - Mission Control{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <header class="dashboard-header panel-retro">
+        <div>
+            <h1>MISSION CONTROL</h1>
+            <p id="progressSummary" class="status-text" role="status">Initializing...</p>
         </div>
-    </div>
-    
-    <div class="dashboard">
-        <h1>VerySecureWebsite Security Labs</h1>
-        
-        <div class="labs-grid">
-            <!-- BOLA/IDOR Lab -->
-            <article class="lab-card bola" data-lab="bola">
-                <div class="category">Authorization</div>
-                <h3>BOLA/IDOR - Object Level Authorization</h3>
-                <p class="objective">Demonstrate unauthorized access to another synthetic user's records. Access Bob's records as Alice.</p>
-                <div class="status-badge status-not-started btn btn-not-started" id="bolaStatus">Not started</div>
-            </article>
-            
-            <!-- BFLA Lab -->
-            <article class="lab-card bfla" data-lab="bfla">
-                <div class="category">Authorization</div>
-                <h3>BFLA - Function Level Authorization</h3>
-                <p class="objective">Demonstrate that a regular test user can access a protected administrative function in the vulnerable lab.</p>
-                <div class="status-badge status-not-started btn btn-not-started" id="bflaStatus">Not started</div>
-            </article>
-            
-            <!-- XSS Lab -->
-            <article class="lab-card xss" data-lab="xss">
-                <div class="category">Injection</div>
-                <h3>Reflected XSS - Cross Site Scripting</h3>
-                <p class="objective">Demonstrate that a controlled test payload executes in the lab's browser context.</p>
-                <div class="status-badge status-not-started btn btn-not-started" id="xssStatus">Not started</div>
-            </article>
+        <div class="account-actions panel-retro">
+            <div class="operator-info">
+                <span class="stat-label">OPERATOR</span>
+                <span class="stat-value">{{ current_user.username }}</span>
+            </div>
+            <button class="btn-retro" id="terminalBtn" title="Open Terminal">>_</button>
+            <button class="btn-retro" id="logoutBtn">TERMINATE SESSION</button>
+        </div>
+    </header>
+
+    <!-- Mission Stats -->
+    <div class="mission-stats panel-retro" style="margin: 1.5rem 0; padding: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <div class="stat-item">
+            <div class="stat-label">ACTIVE MISSIONS</div>
+            <div class="stat-value" id="activeMissions">0</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">COMPLETED</div>
+            <div class="stat-value" id="completedMissions">0</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">TOTAL XP</div>
+            <div class="stat-value" id="totalXP">0</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">CURRENT RANK</div>
+            <div class="stat-value" id="currentRank">SCRIPT KIDDIE</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">SYSTEM STATUS</div>
+            <div class="stat-value" id="systemStatus">ONLINE</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">THREAT LEVEL</div>
+            <div class="stat-value" id="threatLevel">GREEN</div>
         </div>
     </div>
 
-    <script>
-        // Lab completion state tracking
-        const completedLabs = new Set();
-        let pendingCompletion = null;
-        
-        // Show completion modal
-        function showCompletionModal(labName, message, timestamp) {
-            const modal = document.getElementById('completionModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalBody = document.getElementById('modalBody');
-            const modalIcon = document.getElementById('modalIcon');
-            const modalMessage = document.getElementById('modalMessage');
-            
-            modal.setAttribute('aria-hidden', 'false');
-            modal.classList.add('active');
-            
-            modalTitle.textContent = 'Lab completed!';
-            modalMessage.textContent = message;
-            
-            // Update timestamp
-            const now = new Date(timestamp).toLocaleString();
-            modalBody.innerHTML += `<p><small>Completed: ${now}</small></p>`;
-            
-            // Focus management
-            const closeBtn = modal.querySelector('.close');
-            closeBtn.focus();
-            pendingCompletion = {
-                labName,
-                timestamp
-            };
-        }
-        
-        // Hide completion modal
-        function hideCompletionModal() {
-            const modal = document.getElementById('completionModal');
-            modal.setAttribute('aria-hidden', 'true');
-            modal.classList.remove('active');
-            pendingCompletion = null;
-        }
-        
-        // Close on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                hideCompletionModal();
-            }
+    <!-- Mission Grid -->
+    <div class="missions-grid" id="missionsGrid">
+        <!-- Mission cards will be populated by JavaScript -->
+    </div>
+
+    <!-- Operator Profile Sidebar -->
+    <aside class="operator-sidebar panel-retro" id="operatorSidebar">
+        <div class="panel-retro" style="margin-bottom: 1.5rem; padding: 1rem;">
+            <h2 style="color: var(--accent-primary); text-align: center; margin-bottom: 1rem;">OPERATOR PROFILE</h2>
+            <div class="operator-avatar" id="sidebarAvatar">
+                ?
+            </div>
+            <div class="operator-handle" id="sidebarHandle">OPERATOR</div>
+            <div class="operator-rank" id="sidebarRank">SCRIPT KIDDIE</div>
+            <div class="operator-level" id="sidebarLevel">LEVEL 01</div>
+
+            <div class="xp-progress" style="margin: 1rem 0;">
+                <div class="xp-progress-bar" id="sidebarXPBar" style="width: 0%;"></div>
+                <div class="xp-progress-text" id="sidebarXPText">0 / 500 XP</div>
+            </div>
+
+            <div class="stat-item" style="text-align: center; margin: 1rem 0;">
+                <div class="stat-label">MISSIONS COMPLETED</div>
+                <div class="stat-value" id="sidebarMissions">0</div>
+            </div>
+        </div>
+
+        <div class="panel-retro" style="margin-bottom: 1.5rem; padding: 1rem;">
+            <h2 style="color: var(--accent-primary); text-align: center; margin-bottom: 1rem;">QUICK ACCESS</h2>
+            <div class="stat-item" style="margin-bottom: 0.75rem;">
+                <div class="stat-label">ACHIEVEMENTS</div>
+                <div class="stat-value" id="sidebarAchievements">0</div>
+            </div>
+            <div class="stat-item" style="margin-bottom: 0.75rem;">
+                <div class="stat-label">DAILY CONTRACTS</div>
+                <div class="stat-value" id="sidebarContracts">0</div>
+            </div>
+            <button class="btn-retro btn-retro-secondary" style="width: 100%;" id="achievementsBtn">VIEW ACHIEVEMENTS</button>
+            <button class="btn-retro btn-retro-secondary" style="width: 100%; margin-top: 0.5rem;" id="contractsBtn">VIEW CONTRACTS</button>
+            <dialog id="achievementsDialog" class="panel-retro">
+                <h2>ACHIEVEMENTS</h2><ul id="achievementItems"></ul>
+                <button type="button" class="btn-retro-secondary" data-close="achievementsDialog">CLOSE</button>
+            </dialog>
+            <dialog id="contractsDialog" class="panel-retro">
+                <h2>DAILY CONTRACTS</h2><ul id="contractItems"></ul>
+                <button type="button" class="btn-retro-secondary" data-close="contractsDialog">CLOSE</button>
+            </dialog>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const terminalsBtn = document.getElementById('terminalBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const achievementsBtn = document.getElementById('achievementsBtn');
+    const contractsBtn = document.getElementById('contractsBtn');
+    const missionsGrid = document.getElementById('missionsGrid');
+
+    // Terminal button
+    terminalsBtn.addEventListener('click', () => { window.location.href = '/terminal'; });
+
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+        await fetch('/auth/logout', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'X-CSRF-Token': csrfToken() }
         });
-        
-        // Lab status tracking
-        document.querySelectorAll('.lab-card').forEach(card => {
-            const labId = card.dataset.lab;
-            const statusBadge = card.querySelector('.status-badge');
-            const statusBtn = statusBadge ? statusBadge.classList[1] : null;
-            
-            // Initialize status
-            updateLabStatus(labId, statusBadge);
-            
-            // Click handler for lab card
-            card.addEventListener('click', (e) => {
-                // Don't trigger if clicking badge or buttons
-                if (e.target.classList.contains('status-badge')) return;
-                if (e.target.classList.contains('btn')) return;
-                
-                // Mark as in progress
-                updateLabStatus(labId, 'in-progress');
-                markLabInProgress(labId);
-            });
+        window.location.href = '/login';
+    });
+
+    document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.close).close()));
+    achievementsBtn.addEventListener('click', async () => {
+        const response = await fetch('/api/achievements', { credentials: 'include' });
+        if (!response.ok) return showToast('Could not load achievements', 'error');
+        const data = await response.json();
+        const list = document.getElementById('achievementItems');
+        list.replaceChildren();
+        data.achievements.forEach(item => {
+            const row = document.createElement('li');
+            row.textContent = `${item.icon} ${item.name} — ${item.unlocked ? 'UNLOCKED' : 'LOCKED'}`;
+            list.appendChild(row);
         });
-        
-        function updateLabStatus(labId, status) {
-            const card = document.querySelector(`.lab-card[data-lab="${labId}"]`);
-            if (!card) return;
-            
-            card.classList.remove('not-started', 'in-progress', 'completed');
-            
-            const statusLabels = {
-                'not-started': ['status-not-started', 'Not started'],
-                'in-progress': ['status-in-progress', 'In progress'],
-                'completed': ['status-completed', 'Completed']
-            };
-            
-            const [className, text] = statusLabels[status] || statusLabels['not-started'];
-            
-            card.classList.add(className);
-            if (statusBadge) {
-                statusBadge.textContent = text;
-                statusBadge.className = `status-badge ${className}`;
-            }
-        }
-        
-        function markLabInProgress(labId) {
-            // Send to server to mark as in progress
-            fetch(`/labs/${labId}/status`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({labId, status: 'in_progress'})
-            }).then(() => {});
-        }
-        
-        // Initialize: check current lab statuses from server
-        document.querySelectorAll('.lab-card').forEach(card => {
-            const labId = card.dataset.lab;
-            fetch(`/labs/${labId}/status`)
-                .then(res => res.json())
-                .then(data => {
-                    updateLabStatus(labId, data.status || 'not-started');
+        document.getElementById('achievementsDialog').showModal();
+    });
+    contractsBtn.addEventListener('click', async () => {
+        const response = await fetch('/api/daily-contracts', { credentials: 'include' });
+        if (!response.ok) return showToast('Could not load contracts', 'error');
+        const data = await response.json();
+        const list = document.getElementById('contractItems');
+        list.replaceChildren();
+        data.contracts.forEach(item => {
+            const row = document.createElement('li');
+            row.textContent = `${item.contract_id}: ${item.progress}/${item.target} — ${item.status} (+${item.xp_reward} XP)`;
+            if (item.status === 'completed') {
+                const claim = document.createElement('button');
+                claim.type = 'button';
+                claim.textContent = 'CLAIM XP';
+                claim.addEventListener('click', async () => {
+                    const result = await fetch(`/api/daily-contracts/${encodeURIComponent(item.contract_id)}/claim`, {
+                        method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': csrfToken() }
+                    });
+                    if (!result.ok) return showToast('Could not claim contract reward', 'error');
+                    showToast('CONTRACT REWARD CLAIMED', 'success');
+                    document.getElementById('contractsDialog').close();
+                    contractsBtn.click();
                 });
+                row.appendChild(claim);
+            }
+            list.appendChild(row);
         });
-        
-        // Completion verification via server
-        async function verifyAndMarkComplete(labId, evidence) {
-            const response = await fetch(`/labs/${labId}/complete`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ labId, evidence })
+        if (!data.contracts.length) list.textContent = 'No active contracts.';
+        document.getElementById('contractsDialog').showModal();
+    });
+
+    // Fetch and display mission data
+    async function loadDashboardData() {
+        try {
+            // Fetch operator profile
+            const profileResponse = await fetch('/api/operator/profile', {
+                credentials: 'include'
             });
+            const profileData = await profileResponse.json();
+            if (!profileResponse.ok) throw new Error('Unable to load operator profile');
+
+            // Update operator sidebar
+            document.getElementById('sidebarHandle').textContent = profileData.handle || profileData.username || 'OPERATOR';
+            document.getElementById('sidebarRank').textContent = profileData.rank;
+            document.getElementById('sidebarLevel').textContent = `LEVEL ${profileData.level.toString().padStart(2, '0')}`;
+            document.getElementById('sidebarXPBar').style.width = `${(profileData.xp_progress_in_level[0] / profileData.xp_progress_in_level[1]) * 100}%`;
+            document.getElementById('sidebarXPText').textContent = `${profileData.xp_progress_in_level[0]} / ${profileData.xp_progress_in_level[1]} XP`;
+            document.getElementById('sidebarMissions').textContent = profileData.total_missions_completed;
+            document.getElementById('sidebarAvatar').textContent = profileData.handle ? profileData.handle.substring(0, 1).toUpperCase() : '?';
+
+            // Update main dashboard stats
+            document.getElementById('totalXP').textContent = profileData.xp;
+            document.getElementById('currentRank').textContent = profileData.rank;
+            document.getElementById('completedMissions').textContent = profileData.total_missions_completed;
+            document.getElementById('systemStatus').textContent = 'ONLINE';
+            // Set threat level based on the next available mission's difficulty
+            const labs = profileData.labs || {};
+            const missionOrder = ['bola', 'bfla', 'xss'];
+            // Define mission difficulties (same as in loadMissions function)
+            const missions = [
+                { id: 'bola', difficulty: 'medium' },
+                { id: 'bfla', difficulty: 'medium' },
+                { id: 'xss', difficulty: 'easy' }
+            ];
+            let allCompleted = true;
+            let nextMissionDifficulty = 'medium'; // Default
             
-            const data = await response.json();
-            
-            if (data.verified) {
-                showCompletionModal(
-                    labId,
-                    getCompletionMessage(labId, data),
-                    data.verified_at
-                );
-                completedLabs.add(labId);
-                updateLabStatus(labId, 'completed');
-                
-                // Enable proceed button after timeout
-                setTimeout(() => {
-                    const proceedBtn = document.getElementById('proceedBtn');
-                    if (proceedBtn) proceedBtn.style.display = 'inline-block';
-                }, 2000);
-            } else {
-                // Show brief indication that conditions not met
-                alert('Completion conditions not met. Please review the lab requirements.');
+            for (const missionId of missionOrder) {
+                const status = labs[missionId]?.status || 'not_started';
+                if (status !== 'completed') {
+                    allCompleted = false;
+                    // Get the difficulty of this mission
+                    const missionData = missions.find(m => m.id === missionId);
+                    nextMissionDifficulty = missionData ? missionData.difficulty : 'medium';
+                    break;
+                }
             }
             
-            return data.verified;
+            let threatLevelText = 'GREEN'; // Default
+            let threatLevelColor = '#00ff41'; // GREEN for LOW
+            
+            if (allCompleted) {
+                threatLevelText = 'COMPLETE';
+                threatLevelColor = '#00ff41'; // BLUE for COMPLETE
+            } else if (nextMissionDifficulty === 'easy') {
+                threatLevelText = 'LOW';
+                threatLevelColor = '#00ff41'; // GREEN for LOW
+            } else {
+                // medium or hard difficulty
+                threatLevelText = 'MODERATE';
+                threatLevelColor = '#ffbf00'; // AMBER for MODERATE
+            }
+            
+            document.getElementById('threatLevel').textContent = threatLevelText;
+            document.getElementById('threatLevel').style.color = threatLevelColor;
+
+            // Fetch achievements count
+            const achievementsResponse = await fetch('/api/achievements', {
+                credentials: 'include'
+            });
+            const achievementsData = await achievementsResponse.json();
+            if (!achievementsResponse.ok) throw new Error('Unable to load achievements');
+            const unlockedCount = achievementsData.achievements.filter(a => a.unlocked).length;
+            document.getElementById('sidebarAchievements').textContent = unlockedCount;
+            document.getElementById('completedMissions').textContent = profileData.total_missions_completed;
+
+            // Fetch contracts count
+            const contractsResponse = await fetch('/api/daily-contracts', {
+                credentials: 'include'
+            });
+            const contractsData = await contractsResponse.json();
+            if (!contractsResponse.ok) throw new Error('Unable to load contracts');
+            document.getElementById('sidebarContracts').textContent = contractsData.contracts.length;
+
+        } catch (error) {
+            console.error('Failed to load dashboard data:', error);
+            showToast('Failed to load operator data', 'error');
         }
-        
-        function getCompletionMessage(labId, data) {
-            const messages = {
-                'bola': 'You have successfully accessed another user\'s records, demonstrating the BOLA/IDOR vulnerability.',
-                'bfla': 'You have successfully accessed the admin function as a regular user, demonstrating the BFLA vulnerability.',
-                'xss': 'You have successfully demonstrated a reflected XSS payload in the browser context.'
-            };
-            return messages[labId] || 'You have completed this lab.';
+    }
+
+    // Fetch and display missions
+    async function loadMissions() {
+        try {
+            const progressResponse = await fetch('/api/labs/progress', { credentials: 'include' });
+            if (!progressResponse.ok) throw new Error('Unable to load mission progress');
+            const progressData = await progressResponse.json();
+
+            // Clear grid
+            missionsGrid.innerHTML = '';
+
+            // Mission data (matching the existing labs)
+            const missions = [
+                {
+                    id: 'bola',
+                    name: 'DATA BREACH',
+                    category: 'AUTHORIZATION',
+                    objective: 'Demonstrate unauthorized access to another synthetic user\'s records by changing a record ID.',
+                    difficulty: 'medium',
+                    xpReward: 500,
+                    status: 'not_started' // Would come from API
+                },
+                {
+                    id: 'bfla',
+                    name: 'PRIVILEGE OVERRIDE',
+                    category: 'AUTHORIZATION',
+                    objective: 'Demonstrate that a regular test user can access a protected administrative function in the vulnerable lab.',
+                    difficulty: 'medium',
+                    xpReward: 500,
+                    status: 'not_started'
+                },
+                {
+                    id: 'xss',
+                    name: 'SCRIPT INJECTION',
+                    category: 'INJECTION',
+                    objective: 'Demonstrate that a controlled test payload executes in the lab\'s browser context.',
+                    difficulty: 'easy',
+                    xpReward: 500,
+                    status: 'not_started'
+                }
+            ];
+
+            missions.forEach(mission => {
+                mission.status = progressData.labs[mission.id]?.status || 'not_started';
+
+                const missionCard = createMissionCard(mission);
+                missionsGrid.appendChild(missionCard);
+            });
+
+            // Update active missions count
+            const inProgressCount = missions.filter(m => m.status === 'in_progress').length;
+            document.getElementById('activeMissions').textContent = inProgressCount;
+
+        } catch (error) {
+            console.error('Failed to load missions:', error);
+            showToast('Failed to load mission data', 'error');
         }
-        
-        // Simulated completion triggers (replace with actual server verification)
-        // BOLA: Access another user's record via API
-        window.demoBOLAComplete = function() {
-            verifyAndMarkComplete('bola', { action: 'cross_user_access', record_id: 2 });
+    }
+
+    function createMissionCard(mission) {
+        const card = document.createElement('div');
+        card.className = `mission-card panel-retro ${mission.status}`;
+        card.dataset.missionId = mission.id;
+        card.tabIndex = mission.status === 'completed' ? -1 : 0;
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', `Launch ${mission.name} mission, ${mission.status.replace('_', ' ')}`);
+
+        // Difficulty color
+        const difficultyColors = {
+            easy: '#00ff41',
+            medium: '#ffbf00',
+            hard: '#ff0040'
         };
-        
-        // BFLA: Access admin endpoint as regular user
-        window.demoBFLAComplete = function() {
-            verifyAndMarkComplete('bfla', { action: 'admin_access_as_user' });
-        };
-        
-        // XSS: Submit test payload
-        window.demoXSSComplete = function() {
-            const payload = '<script>alert(1)</script>';
-            verifyAndMarkComplete('xss', { action: 'xss_payload', payload });
-        };
-    </script>
-</body>
-</html>
+        const difficultyColor = difficultyColors[mission.difficulty] || '#00ff41';
+
+        card.innerHTML = `
+            <div class="mission-header">
+                <div class="mission-id">[${mission.id.toUpperCase().padStart(8, '0')}]</div>
+                <div class="mission-difficulty">
+                    <div class="difficulty-indicator" style="background-color: ${difficultyColor};"></div>
+                    <span>${mission.difficulty.toUpperCase()}</span>
+                </div>
+            </div>
+            <h2 class="mission-title">${mission.name}</h2>
+            <div class="mission-category">${mission.category}</div>
+            <p class="mission-objective">${mission.objective}</p>
+            <div class="mission-reward">
+                <div class="xp-icon">XP</div>
+                <span>${mission.xpReward}</span>
+            </div>
+            <div class="mission-status-overlay" style="
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+            ">
+                <div class="mission-status-text" style="
+                    color: var(--accent-primary);
+                    font-family: 'VT323', monospace;
+                    font-size: 1.5rem;
+                    text-align: center;
+                ">
+                    ${mission.status === 'completed' ? 'MISSION ACCOMPLISHED' :
+                      mission.status === 'in_progress' ? 'OPERATION ACTIVE' :
+                      'STANDBY'}
+                </div>
+                ${mission.status === 'completed' ? '<div style="margin-top: 0.5rem; font-size: 1rem;">+500 XP AWARDED</div>' : ''}
+            </div>
+        `;
+
+        // Add click handler
+        async function launchMission(e) {
+            if (e.target.closest('.mission-status-overlay') || card.classList.contains('completed')) {
+                return;
+            }
+            const response = await fetch(`/labs/${mission.id}/status`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+                body: JSON.stringify({ status: 'in_progress' })
+            });
+            if (!response.ok) {
+                showToast('Could not start the mission', 'error');
+                return;
+            }
+            window.location.href = `/${mission.id}_lab.html`;
+        }
+        card.addEventListener('click', launchMission);
+        card.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                launchMission(event);
+            }
+        });
+
+        // Add hover effects
+        card.addEventListener('mouseenter', () => {
+            if (!card.classList.contains('completed') && !card.classList.contains('in_progress')) {
+                card.style.transform = 'translateY(-4px)';
+                card.style.boxShadow = '0 8px 16px rgba(0, 255, 65, 0.3), 0 0 20px rgba(0, 255, 65, 0.2)';
+            }
+        });
+
+        card.addEventListener('mouseleave', () => {
+            if (!card.classList.contains('completed') && !card.classList.contains('in_progress')) {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+            }
+        });
+
+        return card;
+    }
+
+    // Initialize dashboard
+    async function initDashboard() {
+        await loadDashboardData();
+        await loadMissions();
+
+        // Update progress summary
+        document.getElementById('progressSummary').textContent =
+            `${document.getElementById('completedMissions').textContent}/3 MISSIONS COMPLETED`;
+
+        // Set up periodic updates
+        setInterval(() => {
+            if (!document.hidden) loadDashboardData();
+        }, 30000);
+    }
+
+    // Start initialization
+    initDashboard();
+
+    // Listen for mission completion events from lab pages
+    window.addEventListener('missionCompleted', async event => {
+        const missionId = event.detail.missionId || event.detail.labId;
+        await loadDashboardData();
+        await loadMissions();
+        if (missionId) showToast(`MISSION ${missionId.toUpperCase()} COMPLETED!`, 'success');
+    });
+});
+</script>
+{% endblock %}

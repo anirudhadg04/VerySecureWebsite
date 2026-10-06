@@ -1,98 +1,108 @@
-"""Database initialization and seed data for the VerySecureWebsite lab.
+"""Create new tables and safely add columns to an existing lab database."""
 
-Creates the SQLite database, tables, and synthetic test accounts.
-Run once to set up the lab environment.
-"""
+from sqlalchemy import inspect, text
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from .models import Base, User, Record, AuditLog
-from .config import settings
-
-
-# Create engine and session
-engine = create_engine(
-    f"sqlite:///{settings.APP_NAME.lower().replace(' ', '_')}.db",
-    connect_args={"check_same_thread": False},
+from .database import Base, SessionLocal, engine
+from .models import (
+    AuditLog,
+    LabProgress,
+    PasswordResetToken,
+    Record,
+    User,
+    UserSession,
+    OperatorProfile,
+    Achievement,
+    DailyContract,
+    UserSettings,
+    XPAwardLog,
 )
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db():
-    """Initialize the database and create tables + synthetic seed data."""
+    """Initialize schema without resetting or reassigning existing data."""
     Base.metadata.create_all(bind=engine)
 
-    db = SessionLocal()
+    inspector = inspect(engine)
+    with engine.begin() as connection:
+        if "audit_logs" in inspector.get_table_names():
+            audit_columns = {column["name"] for column in inspector.get_columns("audit_logs")}
+            if "record_owner_id" not in audit_columns:
+                connection.execute(text("ALTER TABLE audit_logs ADD COLUMN record_owner_id INTEGER"))
+        if "users" in inspector.get_table_names():
+            user_columns = {column["name"] for column in inspector.get_columns("users")}
+            if "updated_at" not in user_columns:
+                connection.execute(text("ALTER TABLE users ADD COLUMN updated_at DATETIME"))
+                connection.execute(text("UPDATE users SET updated_at = created_at WHERE updated_at IS NULL"))
 
-    try:
-        # Check if users already exist (idempotent)
-        existing = db.query(User).count()
-        if existing > 0:
-            return  # Already initialized
+        if "user_settings" in inspector.get_table_names():
+            settings_columns = {column["name"] for column in inspector.get_columns("user_settings")}
+            settings_migrations = {
+                "brightness": "INTEGER NOT NULL DEFAULT 70",
+                "contrast": "INTEGER NOT NULL DEFAULT 80",
+                "volume": "INTEGER NOT NULL DEFAULT 50",
+                "data_retention": "VARCHAR(16) NOT NULL DEFAULT '365'",
+                "intelligence_sharing": "BOOLEAN NOT NULL DEFAULT 0",
+            }
+            for column, sql_type in settings_migrations.items():
+                if column not in settings_columns:
+                    connection.execute(text(f"ALTER TABLE user_settings ADD COLUMN {column} {sql_type}"))
 
-        # Create synthetic test users with different roles
-        # User 1: Regular user
-        user1 = User(
-            username="alice",
-            email="alice@localhost",
-            password_hash="",
-            role="user",
-        )
-        # Password: "labtest123" hashed with bcrypt
+        if "operator_profiles" in inspector.get_table_names():
+            profile_columns = {column["name"] for column in inspector.get_columns("operator_profiles")}
+            profile_migrations = {
+                "total_missions_completed": "INTEGER NOT NULL DEFAULT 0",
+                "total_attempts": "INTEGER NOT NULL DEFAULT 0",
+                "hints_used": "INTEGER NOT NULL DEFAULT 0",
+                "requests_inspected": "INTEGER NOT NULL DEFAULT 0",
+            }
+            for column, sql_type in profile_migrations.items():
+                if column not in profile_columns:
+                    connection.execute(text(f"ALTER TABLE operator_profiles ADD COLUMN {column} {sql_type}"))
 
-        # User 2: Another regular user (target for BOLA/IDOR)
-        user2 = User(
-            username="bob",
-            email="bob@localhost",
-            password_hash="",
-            role="user",
-        )
+        # Migrate existing users to have operator profiles
+        if "operator_profiles" in inspector.get_table_names() and "users" in inspector.get_table_names():
+            user_columns = {column["name"] for column in inspector.get_columns("users")}
+            profile_columns = {column["name"] for column in inspector.get_columns("operator_profiles")}
+            if "id" in user_columns:
+                # Check if any users don't have profiles
+                result = connection.execute(text("""
+                    SELECT u.id FROM users u
+                    LEFT JOIN operator_profiles op ON u.id = op.user_id
+                    WHERE op.user_id IS NULL
+                """))
+                for row in result:
+                    connection.execute(text("""
+                        INSERT INTO operator_profiles (
+                            user_id, handle, avatar, theme, xp, level, rank,
+                            total_missions_completed, total_attempts, hints_used, requests_inspected,
+                            created_at, updated_at
+                        )
+                        VALUES (
+                            :user_id, NULL, 'avatar_001', 'default', 0, 1, 'SCRIPT KIDDIE',
+                            0, 0, 0, 0, datetime('now'), datetime('now')
+                        )
+                    """), {"user_id": row[0]})
 
-        # User 3: Administrator user (target for BFLA)
-        admin = User(
-            username="admin",
-            email="admin@localhost",
-            password_hash="",
-            role="admin",
-        )
-
-        # Hash passwords using bcrypt
-        import bcrypt
-        user1.password_hash = bcrypt.hashpw(b"labtest123", bcrypt.gensalt()).decode("utf-8")
-        user2.password_hash = bcrypt.hashpw(b"labtest123", bcrypt.gensalt()).decode("utf-8")
-        admin.password_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode("utf-8")
-
-        # Add users first, then commit to get IDs
-        db.add_all([user1, user2, admin])
-        db.commit()
-
-        # Create sample records owned by different users (for BOLA/IDOR)
-        # Alice owns records 1, 2; Bob owns records 3, 4
-        records = [
-            Record(title="Alice's Medical Record", content="Confidential medical data", owner_id=user1.id),
-            Record(title="Alice's Financial Report", content="Bank statement data", owner_id=user1.id),
-            Record(title="Bob's Medical Record", content="Patient notes", owner_id=user2.id),
-            Record(title="Bob's Financial Report", content="Investment portfolio", owner_id=user2.id),
-        ]
-
-        # Add all records to session
-        db.add_all(records)
-        db.commit()
-
-        # Create audit log entries for initialization
-        audit_entries = [
-            AuditLog(user_id=user1.id, action="lab_initialization", path="/init", success=True),
-            AuditLog(user_id=user2.id, action="lab_initialization", path="/init", success=True),
-            AuditLog(user_id=admin.id, action="lab_initialization", path="/init", success=True),
-        ]
-        db.add_all(audit_entries)
-        db.commit()
-
-        print(f"Database initialized with {existing + 3} users and {len(records)} records")
-
-    finally:
-        db.close()
+        # Migrate user_settings
+        if "user_settings" in inspector.get_table_names() and "users" in inspector.get_table_names():
+            result = connection.execute(text("""
+                SELECT u.id FROM users u
+                LEFT JOIN user_settings us ON u.id = us.user_id
+                WHERE us.user_id IS NULL
+            """))
+            for row in result:
+                connection.execute(text("""
+                INSERT INTO user_settings (
+                    user_id, sound_enabled, music_enabled, crt_scanlines, reduced_motion,
+                    boot_sequence_enabled, theme_accent, terminal_font,
+                    brightness, contrast, volume, data_retention, intelligence_sharing,
+                    created_at, updated_at
+                )
+                VALUES (
+                    :user_id, 0, 0, 1, 0, 1, 'phosphor', 'vt323',
+                    70, 80, 50, '365', 0, datetime('now'), datetime('now')
+                )
+                """), {"user_id": row[0]})
 
 
 if __name__ == "__main__":

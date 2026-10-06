@@ -1,0 +1,124 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('terminalInput');
+    const lines = document.getElementById('terminalLines');
+    const output = document.getElementById('terminalOutput');
+    const counter = document.getElementById('commandsExecuted');
+    const startedAt = Date.now();
+    let count = 0;
+    const history = [];
+    let historyIndex = 0;
+
+    function print(value) {
+        const line = document.createElement('div');
+        line.textContent = String(value);
+        lines.appendChild(line);
+        output.scrollTop = output.scrollHeight;
+    }
+
+    async function getJson(path) {
+        const response = await fetch(path, {credentials: 'include'});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || `HTTP ${response.status}`);
+        return data;
+    }
+
+    function help() {
+        print('AVAILABLE COMMANDS:');
+        print('  help - Show this help');
+        print('  whoami - Show authenticated operator and XP');
+        print('  status - Show application and account status');
+        print('  missions - Show server-saved mission status');
+        print('  inventory - List your synthetic records');
+        print('  achievements - Show unlocked and locked achievements');
+        print('  clear - Clear terminal output');
+        print('  exit - Sign out');
+    }
+
+    async function run(command) {
+        const value = command.trim();
+        if (!value) return;
+        count += 1;
+        counter.textContent = count;
+        history.push(value);
+        historyIndex = history.length;
+        print(`> ${value}`);
+        try {
+            switch (value.toLowerCase()) {
+                case 'help': help(); break;
+                case 'whoami': {
+                    const p = await getJson('/api/operator/profile');
+                    print(`OPERATOR: ${p.username}`);
+                    print(`HANDLE: ${p.handle || p.username}`);
+                    print(`RANK: ${p.rank} | LEVEL: ${p.level} | XP: ${p.xp}`);
+                    break;
+                }
+                case 'status': {
+                    const [health, p] = await Promise.all([getJson('/api/health'), getJson('/api/operator/profile')]);
+                    print(`SYSTEM: ${health.service} (${health.status})`);
+                    print(`OPERATOR: ${p.username} | ${p.rank} | LEVEL ${p.level}`);
+                    print(`TERMINAL SESSION: ${Math.floor((Date.now() - startedAt) / 1000)} SECONDS`);
+                    break;
+                }
+                case 'missions': {
+                    const progress = await getJson('/api/labs/progress');
+                    const names = {bola: 'DATA BREACH', bfla: 'PRIVILEGE OVERRIDE', xss: 'SCRIPT INJECTION'};
+                    Object.entries(progress.labs || {}).forEach(([id, lab]) => print(`${names[id] || id.toUpperCase()}: ${(lab.status || 'not_started').toUpperCase()}`));
+                    break;
+                }
+                case 'inventory': {
+                    const records = await getJson('/secure/records');
+                    print(`SYNTHETIC RECORDS: ${records.length}`);
+                    records.forEach(record => print(`#${record.id} ${record.title}`));
+                    break;
+                }
+                case 'achievements': {
+                    const result = await getJson('/api/achievements');
+                    (result.achievements || []).forEach(item => print(`${item.unlocked ? '[UNLOCKED]' : '[LOCKED]'} ${item.name}`));
+                    break;
+                }
+                case 'clear':
+                    lines.replaceChildren();
+                    break;
+                case 'exit':
+                    print('SIGNING OUT…');
+                    await fetch('/auth/logout', {method: 'POST', credentials: 'include', headers: {'X-CSRF-Token': csrfToken()}});
+                    location.assign('/login');
+                    return;
+                default:
+                    print(`COMMAND NOT RECOGNIZED: ${value}`);
+                    print('TYPE "HELP" FOR AVAILABLE COMMANDS');
+            }
+        } catch (error) {
+            print(`REQUEST FAILED: ${error.message}`);
+        }
+        print('operator@vsw:~$ ');
+    }
+
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            const command = input.value;
+            input.value = '';
+            run(command);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (historyIndex > 0) historyIndex -= 1;
+            input.value = history[historyIndex] || '';
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (historyIndex < history.length) historyIndex += 1;
+            input.value = history[historyIndex] || '';
+        }
+    });
+    document.getElementById('clearTerminal').addEventListener('click', () => lines.replaceChildren());
+    document.getElementById('terminalHelp').addEventListener('click', () => run('help'));
+    document.getElementById('terminalClose').addEventListener('click', () => run('exit'));
+    output.addEventListener('click', () => input.focus());
+    print('VSW TERMINAL v2.4 - TYPE "HELP" FOR AVAILABLE COMMANDS');
+    print('operator@vsw:~$ ');
+    setInterval(() => {
+        const seconds = Math.floor((Date.now() - startedAt) / 1000);
+        document.getElementById('sessionTime').textContent = new Date(seconds * 1000).toISOString().slice(11, 19);
+        document.getElementById('systemUptime').textContent = 'APPLICATION ONLINE';
+    }, 1000);
+    input.focus();
+});
